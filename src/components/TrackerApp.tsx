@@ -394,7 +394,7 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
   const anyOpen = Object.values(collapsed).some((v: any) => v);
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
       {/* Page Header */}
       <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: theme.shadowMd, marginBottom: "2.5rem" }}>
         <div style={{ background: axis.subGradient, padding: "14px 24px" }}>
