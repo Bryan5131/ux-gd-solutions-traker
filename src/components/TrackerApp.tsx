@@ -22,7 +22,7 @@ function useLexend() {
 // ─── Main App ─────────────────────────────────────────────────
 export default function TrackerApp() {
   useLexend();
-  const { state: persistedState, loading, save } = useTrackerPersistence();
+  const { state: persistedState, loading, save, forceSave, refresh } = useTrackerPersistence();
   const [dark, setDark] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [allSubs, setAllSubs] = useState<Sub[][]>(() => getInitialData());
@@ -93,6 +93,28 @@ export default function TrackerApp() {
   const [newBesoinModal, setNewBesoinModal] = useState<number | null>(null);
   const [exportModal, setExportModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  const handleForceSave = useCallback(async () => {
+    setSaveStatus("saving");
+    const ok = await forceSave({ subs: allSubs, tags, gidCounter });
+    setSaveStatus(ok ? "saved" : "error");
+    setTimeout(() => setSaveStatus(null), 2000);
+  }, [forceSave, allSubs, tags, gidCounter]);
+
+  const handleRefresh = useCallback(async () => {
+    setSaveStatus("refreshing");
+    const refreshed = await refresh();
+    if (refreshed) {
+      setAllSubs(refreshed.subs);
+      setTags(refreshed.tags);
+      setGidCounter(refreshed.gidCounter);
+      setSaveStatus("refreshed");
+    } else {
+      setSaveStatus("error");
+    }
+    setTimeout(() => setSaveStatus(null), 2000);
+  }, [refresh]);
 
   const removeTagGlobal = useCallback((tagId: string) => {
     setTags(prev => prev.filter(t => t.id !== tagId));
@@ -247,8 +269,9 @@ export default function TrackerApp() {
           findFeatureByGid={findFeatureByGid}
           getNextGid={getNextGid}
           setNewBesoinModal={setNewBesoinModal}
-          setExportModal={setExportModal}
-          setImportModal={setImportModal}
+          onForceSave={handleForceSave}
+          onRefresh={handleRefresh}
+          saveStatus={saveStatus}
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
           setDeleteModal={(info: any) => setDeleteModal(info ? { ...info, tabIndex: activeTab } : null)}
@@ -413,8 +436,8 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
   toggleCollapse, isOpen, toggleAllSections, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
-  findFeatureByGid, getNextGid, setNewBesoinModal, setExportModal,
-  setImportModal, removeTagGlobal, setTags, setDeleteModal
+  findFeatureByGid, getNextGid, setNewBesoinModal, onForceSave,
+  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal
 }: any) {
   const axis = getAxisColors(tabIndex, dark);
   const axeLabel = AXE_LABELS[TAB_AXES[tabIndex]];
@@ -448,8 +471,9 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
         tags={tags}
         showNotes={showNotes} setShowNotes={setShowNotes}
         anyOpen={anyOpen} toggleAllSections={toggleAllSections}
-        onExport={() => setExportModal(true)}
-        onImport={() => setImportModal(true)}
+        onForceSave={onForceSave}
+        onRefresh={onRefresh}
+        saveStatus={saveStatus}
         onNewBesoin={() => setNewBesoinModal(tabIndex)}
       />
 
@@ -487,13 +511,15 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
 // ─── Toolbar ──────────────────────────────────────────────────
 function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFilter,
   microFilter, setMicroFilter, tagFilter, setTagFilter, tags, showNotes, setShowNotes,
-  anyOpen, toggleAllSections, onExport, onImport, onNewBesoin }: any) {
+  anyOpen, toggleAllSections, onForceSave, onRefresh, saveStatus, onNewBesoin }: any) {
 
   const ctrl: React.CSSProperties = {
     padding: "7px 12px", borderRadius: 8, border: "1px solid " + theme.border,
     background: theme.surface, fontSize: 12, fontFamily: "Lexend, sans-serif",
     color: theme.text, outline: "none", cursor: "pointer",
   };
+
+  const statusLabel = saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved!" : saveStatus === "refreshing" ? "Refreshing..." : saveStatus === "refreshed" ? "Refreshed!" : saveStatus === "error" ? "Error!" : null;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 20, alignItems: "center" }}>
@@ -537,8 +563,17 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
         {anyOpen ? "\u2191 Collapse all" : "\u2193 Open all"}
       </button>
       <div style={{ width: 1, height: 28, background: theme.border }} />
-      <button onClick={onImport} style={ctrl}>{"\u2B06\uFE0F"} Import</button>
-      <button onClick={onExport} style={ctrl}>{"\u2B07\uFE0F"} Export</button>
+      <button onClick={onForceSave} style={ctrl} disabled={saveStatus === "saving"}>
+        {"\uD83D\uDCBE"} Save
+      </button>
+      <button onClick={onRefresh} style={ctrl} disabled={saveStatus === "refreshing"}>
+        {"\uD83D\uDD04"} Refresh
+      </button>
+      {statusLabel && (
+        <span style={{ fontSize: 11, color: saveStatus === "error" ? "#ef4444" : axis.accent, fontWeight: 500 }}>
+          {statusLabel}
+        </span>
+      )}
       <div style={{ flex: 1 }} />
       <button
         onClick={onNewBesoin}
