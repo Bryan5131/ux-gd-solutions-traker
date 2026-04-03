@@ -92,5 +92,49 @@ export function useTrackerPersistence() {
     }, 800);
   }, []);
 
-  return { state, loading, save };
+  // Force immediate save
+  const forceSave = useCallback(async (currentState: TrackerState) => {
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    setState(currentState);
+    try {
+      const { error } = await supabase.from("tracker_state").update({
+        subs: currentState.subs as any,
+        tags: currentState.tags as any,
+        gid_counter: currentState.gidCounter,
+        updated_at: new Date().toISOString(),
+      }).eq("id", "main");
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error("Failed to force save:", err);
+      return false;
+    }
+  }, []);
+
+  // Refresh from Supabase
+  const refresh = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tracker_state")
+        .select("*")
+        .eq("id", "main")
+        .maybeSingle();
+      if (error) throw error;
+      if (data && data.subs) {
+        const refreshed = {
+          subs: data.subs as unknown as Sub[][],
+          tags: data.tags as unknown as Tag[],
+          gidCounter: data.gid_counter,
+        };
+        setState(refreshed);
+        return refreshed;
+      }
+      return null;
+    } catch (err) {
+      console.error("Failed to refresh:", err);
+      return null;
+    }
+  }, []);
+
+  return { state, loading, save, forceSave, refresh };
 }
