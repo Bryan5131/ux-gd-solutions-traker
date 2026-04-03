@@ -397,7 +397,7 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
       {/* Page Header */}
       <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: theme.shadowMd, marginBottom: "2.5rem" }}>
-        <div style={{ background: axis.subGradient, padding: "14px 24px" }}>
+        <div style={{ background: axis.subGradient, padding: "14px 24px", textAlign: "center" as const }}>
           <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, opacity: 0.8, color: axis.subText }}>
             {axeLabel}
           </span>
