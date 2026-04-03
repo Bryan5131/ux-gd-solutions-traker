@@ -22,18 +22,37 @@ function useLexend() {
 // ─── Main App ─────────────────────────────────────────────────
 export default function TrackerApp() {
   useLexend();
+  const { state: persistedState, loading, save } = useTrackerPersistence();
   const [dark, setDark] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [allSubs, setAllSubs] = useState<Sub[][]>(() => getInitialData());
   const [allCollapsed, setAllCollapsed] = useState<Record<string, boolean>[]>([{}, {}, {}, {}]);
   const [tags, setTags] = useState<Tag[]>(() => getInitialTags());
-  const [gidCounter, setGidCounter] = useState(() => {
-    let c = 0;
-    getInitialData().forEach(tab => tab.forEach(s => s.groups.forEach(g => { c += g.features.length; })));
-    return c + 1;
-  });
+  const [gidCounter, setGidCounter] = useState(1);
+  const [initialized, setInitialized] = useState(false);
+
+  // Sync from persisted state once loaded
+  useEffect(() => {
+    if (persistedState && !initialized) {
+      setAllSubs(persistedState.subs);
+      setTags(persistedState.tags);
+      setGidCounter(persistedState.gidCounter);
+      setInitialized(true);
+    }
+  }, [persistedState, initialized]);
 
   const theme = dark ? darkTheme : lightTheme;
+
+  // Auto-save on changes (after initialization)
+  const saveTrigger = useRef(false);
+  useEffect(() => {
+    if (!initialized) return;
+    if (!saveTrigger.current) {
+      saveTrigger.current = true;
+      return;
+    }
+    save({ subs: allSubs, tags, gidCounter });
+  }, [allSubs, tags, gidCounter, initialized, save]);
 
   const getNextGid = useCallback(() => {
     const g = gidCounter;
