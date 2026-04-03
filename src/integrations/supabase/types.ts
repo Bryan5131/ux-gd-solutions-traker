@@ -14,7 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      tracker_state: {
+        Row: {
+          gid_counter: number
+          id: string
+          subs: Json
+          tags: Json
+          updated_at: string
+        }
+        Insert: {
+          gid_counter?: number
+          id?: string
+          subs?: Json
+          tags?: Json
+          updated_at?: string
+        }
+        Update: {
+          gid_counter?: number
+          id?: string
+          subs?: Json
+          tags?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
