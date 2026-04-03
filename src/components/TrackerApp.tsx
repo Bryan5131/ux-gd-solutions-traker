@@ -197,6 +197,7 @@ export default function TrackerApp() {
   }
 
   return (
+    <div style={containerStyle}>
       {activeTab === -1 ? (
         <AllView
           allSubs={allSubs}
