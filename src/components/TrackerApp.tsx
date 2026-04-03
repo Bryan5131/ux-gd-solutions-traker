@@ -6,6 +6,7 @@ import {
 } from "../lib/tracker-theme";
 import { getInitialData, getInitialTags, TAB_NAMES, TAB_AXES, AXE_LABELS } from "../lib/tracker-data";
 import { trackerReducer, nextMacro, nextMicro } from "../lib/tracker-reducer";
+import { useTrackerPersistence } from "../hooks/use-tracker-persistence";
 
 // ─── Font loader ──────────────────────────────────────────────
 function useLexend() {
