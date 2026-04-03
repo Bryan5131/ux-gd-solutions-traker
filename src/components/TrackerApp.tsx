@@ -436,8 +436,8 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
   toggleCollapse, isOpen, toggleAllSections, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
-  findFeatureByGid, getNextGid, setNewBesoinModal, setExportModal,
-  setImportModal, removeTagGlobal, setTags, setDeleteModal
+  findFeatureByGid, getNextGid, setNewBesoinModal, onForceSave,
+  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal
 }: any) {
   const axis = getAxisColors(tabIndex, dark);
   const axeLabel = AXE_LABELS[TAB_AXES[tabIndex]];
