@@ -511,13 +511,15 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
 // ─── Toolbar ──────────────────────────────────────────────────
 function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFilter,
   microFilter, setMicroFilter, tagFilter, setTagFilter, tags, showNotes, setShowNotes,
-  anyOpen, toggleAllSections, onExport, onImport, onNewBesoin }: any) {
+  anyOpen, toggleAllSections, onForceSave, onRefresh, saveStatus, onNewBesoin }: any) {
 
   const ctrl: React.CSSProperties = {
     padding: "7px 12px", borderRadius: 8, border: "1px solid " + theme.border,
     background: theme.surface, fontSize: 12, fontFamily: "Lexend, sans-serif",
     color: theme.text, outline: "none", cursor: "pointer",
   };
+
+  const statusLabel = saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved!" : saveStatus === "refreshing" ? "Refreshing..." : saveStatus === "refreshed" ? "Refreshed!" : saveStatus === "error" ? "Error!" : null;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 20, alignItems: "center" }}>
@@ -561,8 +563,17 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
         {anyOpen ? "\u2191 Collapse all" : "\u2193 Open all"}
       </button>
       <div style={{ width: 1, height: 28, background: theme.border }} />
-      <button onClick={onImport} style={ctrl}>{"\u2B06\uFE0F"} Import</button>
-      <button onClick={onExport} style={ctrl}>{"\u2B07\uFE0F"} Export</button>
+      <button onClick={onForceSave} style={ctrl} disabled={saveStatus === "saving"}>
+        {"\uD83D\uDCBE"} Save
+      </button>
+      <button onClick={onRefresh} style={ctrl} disabled={saveStatus === "refreshing"}>
+        {"\uD83D\uDD04"} Refresh
+      </button>
+      {statusLabel && (
+        <span style={{ fontSize: 11, color: saveStatus === "error" ? "#ef4444" : axis.accent, fontWeight: 500 }}>
+          {statusLabel}
+        </span>
+      )}
       <div style={{ flex: 1 }} />
       <button
         onClick={onNewBesoin}
