@@ -19,10 +19,23 @@ function useLexend() {
   }, []);
 }
 
+// ─── Mobile detection ─────────────────────────────────────────
+function useIsMobileTracker() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 // ─── Main App ─────────────────────────────────────────────────
 export default function TrackerApp() {
   useLexend();
   const { state: persistedState, loading, save, forceSave, refresh } = useTrackerPersistence();
+  const isMobile = useIsMobileTracker();
   const [dark, setDark] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [allSubs, setAllSubs] = useState<Sub[][]>(() => getInitialData());
@@ -192,9 +205,6 @@ export default function TrackerApp() {
     try {
       const lines = csv.trim().split("\n").slice(1);
       const newData = getInitialData().map(() => [] as Sub[]);
-      // Simple re-import: just replace with current data format
-      // For a real import, parse each line
-      // This is a simplified version
       setAllSubs(getInitialData());
       return true;
     } catch {
@@ -207,7 +217,7 @@ export default function TrackerApp() {
     background: theme.bg,
     color: theme.text,
     minHeight: "100vh",
-    paddingBottom: 80,
+    paddingBottom: isMobile ? 64 : 80,
   };
 
   if (loading || !initialized) {
@@ -241,6 +251,7 @@ export default function TrackerApp() {
           totalFeatures={totalFeatures}
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
+          isMobile={isMobile}
         />
       ) : (
         <TabContent
@@ -275,6 +286,7 @@ export default function TrackerApp() {
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
           setDeleteModal={(info: any) => setDeleteModal(info ? { ...info, tabIndex: activeTab } : null)}
+          isMobile={isMobile}
         />
       )}
 
@@ -285,6 +297,7 @@ export default function TrackerApp() {
         dark={dark}
         setDark={setDark}
         theme={theme}
+        isMobile={isMobile}
       />
 
       {/* Modals */}
@@ -292,6 +305,7 @@ export default function TrackerApp() {
         <ConfirmDeleteModal
           theme={theme}
           label={deleteModal.label}
+          isMobile={isMobile}
           onCancel={() => setDeleteModal(null)}
           onConfirm={() => {
             dispatch(deleteModal.tabIndex, {
@@ -307,6 +321,7 @@ export default function TrackerApp() {
       {newBesoinModal !== null && (
         <NewBesoinModal
           theme={theme}
+          isMobile={isMobile}
           onCancel={() => setNewBesoinModal(null)}
           onAdd={(name: string) => {
             dispatch(newBesoinModal, { type: "AS", name });
@@ -318,12 +333,14 @@ export default function TrackerApp() {
         <ExportModal
           theme={theme}
           csv={exportCsv()}
+          isMobile={isMobile}
           onClose={() => setExportModal(false)}
         />
       )}
       {importModal && (
         <ImportModal
           theme={theme}
+          isMobile={isMobile}
           onCancel={() => setImportModal(false)}
           onImport={(csv: string) => {
             importCsv(csv);
@@ -336,12 +353,13 @@ export default function TrackerApp() {
 }
 
 // ─── Footer ───────────────────────────────────────────────────
-function Footer({ activeTab, setActiveTab, dark, setDark, theme }: {
+function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile }: {
   activeTab: number;
   setActiveTab: (t: number) => void;
   dark: boolean;
   setDark: (d: boolean) => void;
   theme: any;
+  isMobile: boolean;
 }) {
   const footerStyle: React.CSSProperties = {
     position: "fixed",
@@ -355,6 +373,11 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme }: {
     alignItems: "stretch",
     zIndex: 1000,
     fontFamily: "Lexend, sans-serif",
+    ...(isMobile ? {
+      overflowX: "auto" as const,
+      WebkitOverflowScrolling: "touch" as any,
+      scrollbarWidth: "none" as any,
+    } : {}),
   };
 
   const tabColors = [
@@ -370,8 +393,8 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme }: {
       <button
         onClick={() => setActiveTab(-1)}
         style={{
-          padding: "13px 16px",
-          fontSize: 11,
+          padding: isMobile ? "10px 12px" : "13px 16px",
+          fontSize: isMobile ? 10 : 11,
           fontWeight: activeTab === -1 ? 700 : 500,
           fontFamily: "Lexend, sans-serif",
           background: activeTab === -1 ? (dark ? "#2a2926" : "#e8e7e2") : "transparent",
@@ -380,11 +403,13 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme }: {
           cursor: "pointer",
           borderTop: activeTab === -1 ? "3px solid " + theme.text : "3px solid transparent",
           lineHeight: 1.4,
+          whiteSpace: "nowrap" as const,
+          flexShrink: 0,
         }}
       >
         ALL
       </button>
-      <div style={{ width: 1, background: theme.border, alignSelf: "stretch" }} />
+      <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
       {/* Tab buttons */}
       {TAB_NAMES.map((name, i) => {
         const axis = getAxisColors(i, dark);
@@ -394,9 +419,9 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme }: {
             key={i}
             onClick={() => setActiveTab(i)}
             style={{
-              flex: 1,
-              padding: "13px 8px",
-              fontSize: 11,
+              flex: isMobile ? undefined : 1,
+              padding: isMobile ? "10px 12px" : "13px 8px",
+              fontSize: isMobile ? 10 : 11,
               fontWeight: isActive ? 700 : 400,
               fontFamily: "Lexend, sans-serif",
               background: isActive ? axis.accentLight : "transparent",
@@ -405,24 +430,28 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme }: {
               borderTop: isActive ? "3px solid " + axis.accent : "3px solid transparent",
               cursor: "pointer",
               lineHeight: 1.4,
+              whiteSpace: "nowrap" as const,
+              flexShrink: 0,
             }}
           >
             {name}
           </button>
         );
       })}
-      <div style={{ width: 1, background: theme.border, alignSelf: "stretch" }} />
+      <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
       <button
         onClick={() => setDark(!dark)}
         style={{
-          padding: "13px 16px",
-          fontSize: 13,
+          padding: isMobile ? "10px 12px" : "13px 16px",
+          fontSize: isMobile ? 11 : 13,
           fontFamily: "Lexend, sans-serif",
           background: "transparent",
           color: theme.textSub,
           border: "none",
           cursor: "pointer",
           fontWeight: 500,
+          whiteSpace: "nowrap" as const,
+          flexShrink: 0,
         }}
       >
         {dark ? "Light" : "Dark"}
@@ -437,7 +466,7 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
   findFeatureByGid, getNextGid, setNewBesoinModal, onForceSave,
-  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal
+  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, isMobile
 }: any) {
   const axis = getAxisColors(tabIndex, dark);
   const axeLabel = AXE_LABELS[TAB_AXES[tabIndex]];
@@ -445,17 +474,17 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
   const anyOpen = Object.values(collapsed).some((v: any) => v);
 
   return (
-    <div style={{ maxWidth: 1800, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 1800, margin: "0 auto", padding: isMobile ? "12px 8px" : "24px 16px" }}>
       {/* Page Header */}
-      <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: theme.shadowMd, marginBottom: "2.5rem" }}>
-        <div style={{ background: axis.subGradient, padding: "14px 24px", textAlign: "center" as const }}>
-          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, opacity: 0.8, color: axis.subText }}>
+      <div style={{ borderRadius: isMobile ? 14 : 20, overflow: "hidden", boxShadow: theme.shadowMd, marginBottom: isMobile ? "1.2rem" : "2.5rem" }}>
+        <div style={{ background: axis.subGradient, padding: isMobile ? "10px 16px" : "14px 24px", textAlign: "center" as const }}>
+          <span style={{ fontSize: isMobile ? 10 : 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, opacity: 0.8, color: axis.subText }}>
             {axeLabel}
           </span>
         </div>
-        <div style={{ background: theme.surface, padding: "2rem 2.5rem", textAlign: "center" as const, borderTop: "4px solid " + axis.accent }}>
-          <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-0.03em", color: theme.text }}>{TAB_NAMES[tabIndex]}</div>
-          <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>
+        <div style={{ background: theme.surface, padding: isMobile ? "1.2rem 1rem" : "2rem 2.5rem", textAlign: "center" as const, borderTop: "4px solid " + axis.accent }}>
+          <div style={{ fontSize: isMobile ? 22 : 36, fontWeight: 700, letterSpacing: "-0.03em", color: theme.text }}>{TAB_NAMES[tabIndex]}</div>
+          <div style={{ fontSize: isMobile ? 11 : 13, color: theme.textMuted, marginTop: isMobile ? 4 : 8 }}>
             {"\uD83C\uDFAF"} Objectifs utilisateurs
           </div>
         </div>
@@ -475,6 +504,7 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
         onRefresh={onRefresh}
         saveStatus={saveStatus}
         onNewBesoin={() => setNewBesoinModal(tabIndex)}
+        isMobile={isMobile}
       />
 
       {/* Subs */}
@@ -502,6 +532,7 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
           setDeleteModal={setDeleteModal}
+          isMobile={isMobile}
         />
       ))}
     </div>
@@ -511,16 +542,121 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
 // ─── Toolbar ──────────────────────────────────────────────────
 function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFilter,
   microFilter, setMicroFilter, tagFilter, setTagFilter, tags, showNotes, setShowNotes,
-  anyOpen, toggleAllSections, onForceSave, onRefresh, saveStatus, onNewBesoin }: any) {
+  anyOpen, toggleAllSections, onForceSave, onRefresh, saveStatus, onNewBesoin, isMobile }: any) {
+
+  const [filtersOpen, setFiltersOpen] = useState(!isMobile);
 
   const ctrl: React.CSSProperties = {
-    padding: "7px 12px", borderRadius: 8, border: "1px solid " + theme.border,
-    background: theme.surface, fontSize: 12, fontFamily: "Lexend, sans-serif",
-    color: theme.text, outline: "none", cursor: "pointer",
+    padding: isMobile ? "6px 10px" : "7px 12px",
+    borderRadius: 8,
+    border: "1px solid " + theme.border,
+    background: theme.surface,
+    fontSize: isMobile ? 11 : 12,
+    fontFamily: "Lexend, sans-serif",
+    color: theme.text,
+    outline: "none",
+    cursor: "pointer",
   };
 
   const statusLabel = saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved!" : saveStatus === "refreshing" ? "Refreshing..." : saveStatus === "refreshed" ? "Refreshed!" : saveStatus === "error" ? "Error!" : null;
 
+  if (isMobile) {
+    return (
+      <div style={{ marginBottom: 16 }}>
+        {/* Top row: search + filter toggle + new */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
+          <input
+            placeholder="Search..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ ...ctrl, flex: 1, minWidth: 0, cursor: "text" }}
+          />
+          <button
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            style={{
+              ...ctrl,
+              background: filtersOpen ? axis.accentLight : theme.surface,
+              color: filtersOpen ? axis.accentText : theme.text,
+              borderColor: filtersOpen ? axis.accent : theme.border,
+              fontWeight: filtersOpen ? 600 : 400,
+              flexShrink: 0,
+            }}
+          >
+            {"\u2699"} Filtres
+          </button>
+          <button
+            onClick={onNewBesoin}
+            style={{
+              ...ctrl,
+              background: axis.accent,
+              color: "#ffffff",
+              fontWeight: 700,
+              borderColor: axis.accent,
+              flexShrink: 0,
+              fontSize: 16,
+              padding: "4px 10px",
+              borderRadius: 8,
+            }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Collapsible filters */}
+        {filtersOpen && (
+          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 8 }}>
+            <select value={macroFilter} onChange={e => setMacroFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
+              <option value="all">Macro</option>
+              {Object.entries(macroStatuses).map(([k, v]) => (
+                <option key={k} value={k}>{v.icon} {v.label}</option>
+              ))}
+            </select>
+            <select value={microFilter} onChange={e => setMicroFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
+              <option value="all">Micro</option>
+              {Object.entries(microStatuses).map(([k, v]) => (
+                <option key={k} value={k}>{v.icon} {v.label}</option>
+              ))}
+            </select>
+            <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
+              <option value="all">Tag</option>
+              {tags.map((t: Tag) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowNotes(!showNotes)}
+              style={{
+                ...ctrl,
+                flex: "1 1 calc(50% - 3px)",
+                background: showNotes ? axis.accentLight : theme.surface,
+                color: showNotes ? axis.accentText : theme.text,
+                borderColor: showNotes ? axis.accent : theme.border,
+                fontWeight: showNotes ? 600 : 400,
+              }}
+            >
+              {"\uD83D\uDCDD"} Notes
+            </button>
+            <button onClick={toggleAllSections} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
+              {anyOpen ? "\u2191 Fermer" : "\u2193 Ouvrir"}
+            </button>
+            <button onClick={onForceSave} style={{ ...ctrl, flex: "1 1 calc(25% - 3px)" }} disabled={saveStatus === "saving"}>
+              {"\uD83D\uDCBE"}
+            </button>
+            <button onClick={onRefresh} style={{ ...ctrl, flex: "1 1 calc(25% - 3px)" }} disabled={saveStatus === "refreshing"}>
+              {"\uD83D\uDD04"}
+            </button>
+            {statusLabel && (
+              <span style={{ fontSize: 10, color: saveStatus === "error" ? "#ef4444" : axis.accent, fontWeight: 500, alignSelf: "center" }}>
+                {statusLabel}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop toolbar (unchanged)
   return (
     <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 20, alignItems: "center" }}>
       <input
@@ -596,7 +732,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
 // ─── Sub Section ──────────────────────────────────────────────
 function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen,
   collapsed, toggleCollapse, isGroupOpen, toggleGroupOpen, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal }: any) {
+  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, isMobile }: any) {
 
   const featureCount = sub.groups.reduce((c: number, g: any) => c + g.features.length, 0);
   const showSingleGroup = sub.groups.length === 1 && sub.groups[0].name === "general";
@@ -605,7 +741,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
     <div style={{ marginBottom: 8 }}>
       {/* Sub header */}
       <div
-        draggable
+        draggable={!isMobile}
         onDragStart={() => { dragRef.current = { type: "sub", subId: sub.id }; }}
         onDragOver={(e: React.DragEvent) => e.preventDefault()}
         onDrop={() => {
@@ -616,22 +752,23 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
         onClick={toggleOpen}
         style={{
           background: axis.subGradient,
-          borderRadius: 12,
-          padding: "16px 20px",
+          borderRadius: isMobile ? 10 : 12,
+          padding: isMobile ? "12px 14px" : "16px 20px",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: isMobile ? 8 : 12,
           userSelect: "none" as const,
         }}
       >
-        <span style={{ fontSize: 12, color: axis.subText, opacity: 0.5, cursor: "grab" }}>{"\u2807"}</span>
-        <span style={{ fontSize: 16, fontWeight: 700, color: axis.subText, flex: 1 }}>{sub.name}</span>
+        {!isMobile && <span style={{ fontSize: 12, color: axis.subText, opacity: 0.5, cursor: "grab" }}>{"\u2807"}</span>}
+        <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, color: axis.subText, flex: 1, lineHeight: 1.3 }}>{sub.name}</span>
         <span style={{
           background: axis.subCountBg, color: axis.subCountText,
-          borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 600,
+          borderRadius: 999, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
+          whiteSpace: "nowrap" as const,
         }}>
-          {featureCount} solutions UX/GD
+          {featureCount} {isMobile ? "" : "solutions UX/GD"}
         </span>
         <span style={{
           fontSize: 14, color: axis.subText, transition: "transform 0.2s",
@@ -663,6 +800,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
               setTags={setTags}
               setDeleteModal={setDeleteModal}
               tabIndex={tabIndex}
+              isMobile={isMobile}
             />
           ) : (
             sub.groups.map((g: any) => (
@@ -686,6 +824,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
                 setTags={setTags}
                 setDeleteModal={setDeleteModal}
                 tabIndex={tabIndex}
+                isMobile={isMobile}
               />
             ))
           )}
@@ -699,7 +838,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
 // ─── Group Section ────────────────────────────────────────────
 function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
   dispatch, matchesFilters, showNotes, findFeatureByGid, getNextGid, dragRef,
-  removeTagGlobal, setTags, setDeleteModal, tabIndex }: any) {
+  removeTagGlobal, setTags, setDeleteModal, tabIndex, isMobile }: any) {
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
@@ -708,7 +847,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
     <div style={{ marginBottom: 6 }}>
       {/* Group header */}
       <div
-        draggable
+        draggable={!isMobile}
         onDragStart={() => { dragRef.current = { type: "group", subId: sub.id, gId: group.id }; }}
         onDragOver={(e: React.DragEvent) => e.preventDefault()}
         onDrop={() => {
@@ -720,16 +859,16 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
           background: axis.groupGradient,
           border: "1px solid " + axis.groupBorder,
           borderRadius: 8,
-          padding: "9px 14px",
+          padding: isMobile ? "8px 10px" : "9px 14px",
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: isMobile ? 6 : 8,
           cursor: "pointer",
           userSelect: "none" as const,
         }}
         onClick={() => !editing && toggleOpen()}
       >
-        <span style={{ fontSize: 12, color: theme.textMuted, cursor: "grab" }}>{"\u2807"}</span>
+        {!isMobile && <span style={{ fontSize: 12, color: theme.textMuted, cursor: "grab" }}>{"\u2807"}</span>}
         {editing ? (
           <input
             value={editName}
@@ -741,12 +880,12 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
             onClick={e => e.stopPropagation()}
             autoFocus
             style={{
-              flex: 1, fontSize: 13, fontWeight: 600, fontFamily: "Lexend, sans-serif",
+              flex: 1, fontSize: isMobile ? 12 : 13, fontWeight: 600, fontFamily: "Lexend, sans-serif",
               background: "transparent", border: "none", color: axis.groupText, outline: "none",
             }}
           />
         ) : (
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: axis.groupText }}>{group.name}</span>
+          <span style={{ flex: 1, fontSize: isMobile ? 12 : 13, fontWeight: 600, color: axis.groupText }}>{group.name}</span>
         )}
         <span style={{ fontSize: 11, color: theme.textMuted }}>{group.features.length}</span>
         <button
@@ -778,6 +917,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
           getNextGid={getNextGid} dragRef={dragRef}
           removeTagGlobal={removeTagGlobal} setTags={setTags}
           setDeleteModal={setDeleteModal} tabIndex={tabIndex}
+          isMobile={isMobile}
         />
       )}
     </div>
@@ -787,7 +927,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
 // ─── Group Features (shared between single-group and multi-group) ──
 function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesFilters,
   showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags,
-  setDeleteModal, tabIndex }: any) {
+  setDeleteModal, tabIndex, isMobile }: any) {
   return (
     <div style={{ padding: "4px 0" }}>
       {group.features.filter(matchesFilters).map((f: Feature) => (
@@ -807,6 +947,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
           setTags={setTags}
           setDeleteModal={setDeleteModal}
           tabIndex={tabIndex}
+          isMobile={isMobile}
         />
       ))}
       <AddFeatureForm
@@ -817,6 +958,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
         dispatch={dispatch}
         findFeatureByGid={findFeatureByGid}
         getNextGid={getNextGid}
+        isMobile={isMobile}
       />
     </div>
   );
@@ -824,7 +966,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
 
 // ─── Feature Row ──────────────────────────────────────────────
 function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
-  showNotes, dragRef, removeTagGlobal, setTags, setDeleteModal, tabIndex }: any) {
+  showNotes, dragRef, removeTagGlobal, setTags, setDeleteModal, tabIndex, isMobile }: any) {
 
   const [editing, setEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(feature.label);
@@ -839,7 +981,7 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
     : theme.surface;
 
   const badgeStyle = (colors: any): React.CSSProperties => ({
-    borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600,
+    borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
     display: "inline-flex", alignItems: "center", gap: 4,
     background: colors.bg, border: "1px solid " + colors.border, color: colors.text,
     cursor: "pointer", fontFamily: "Lexend, sans-serif",
@@ -849,7 +991,7 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
 
   if (editing) {
     return (
-      <div style={{ padding: "11px 16px", background: theme.surfaceAlt, borderRadius: 8, marginBottom: 2 }}>
+      <div style={{ padding: isMobile ? "10px 12px" : "11px 16px", background: theme.surfaceAlt, borderRadius: 8, marginBottom: 2 }}>
         <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4 }}>#{f.id}</div>
         <input
           value={editLabel}
@@ -903,6 +1045,82 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
     );
   }
 
+  // ─── MOBILE CARD LAYOUT ─────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ marginBottom: 2 }}>
+        <div
+          onClick={() => setEditing(true)}
+          style={{
+            padding: "10px 12px",
+            background: rowBg,
+            borderRadius: showNote ? "10px 10px 0 0" : 10,
+            cursor: "default",
+          }}
+        >
+          {/* Top row: GID + label */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, flexShrink: 0, marginTop: 2 }}>#{f.gid}</span>
+            {f.note && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setNoteVisible(!noteVisible); }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0,
+                  opacity: (noteVisible || showNotes) ? 1 : 0.3, flexShrink: 0, marginTop: 1,
+                }}
+              >
+                {"\uD83D\uDCDD"}
+              </button>
+            )}
+            <span
+              style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.5 }}
+              dangerouslySetInnerHTML={{ __html: f.label }}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); setDeleteModal({ subId: sub.id, gId: group.id, fId: f.id, label: f.label }); }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.3, padding: 0, color: theme.textMuted, flexShrink: 0 }}
+            >
+              {"\u00D7"}
+            </button>
+          </div>
+          {/* Bottom row: badges + tags */}
+          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, alignItems: "center" }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "macro", val: nextMacro(f.macro) }); }}
+              style={badgeStyle(macroBadge)}
+            >
+              <span style={{ fontSize: 9 }}>{(macroStatuses as any)[f.macro]?.icon}</span>
+              {(macroStatuses as any)[f.macro]?.label}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "micro", val: nextMicro(f.micro) }); }}
+              style={badgeStyle(microBadge)}
+            >
+              <span style={{ fontSize: 9 }}>{(microStatuses as any)[f.micro]?.icon}</span>
+              {(microStatuses as any)[f.micro]?.label}
+            </button>
+            <TagArea
+              feature={f} sub={sub} group={group} tags={tags}
+              theme={theme} dark={dark} dispatch={dispatch}
+              removeTagGlobal={removeTagGlobal} setTags={setTags}
+              isMobile={isMobile}
+            />
+          </div>
+        </div>
+        {showNote && (
+          <div style={{
+            padding: "6px 12px 10px 12px",
+            background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder,
+            borderRadius: "0 0 10px 10px",
+          }}>
+            <span style={{ fontSize: 11, color: theme.noteText, lineHeight: 1.7 }}>{f.note}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── DESKTOP ROW LAYOUT ─────────────────────────────
   return (
     <div style={{ marginBottom: 1 }}>
       <div
@@ -944,42 +1162,42 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
           dangerouslySetInnerHTML={{ __html: f.label }}
         />
         <TagArea
-          feature={f}
-          sub={sub}
-          group={group}
-          tags={tags}
-          theme={theme}
-          dark={dark}
-          dispatch={dispatch}
-          removeTagGlobal={removeTagGlobal}
-          setTags={setTags}
+          feature={f} sub={sub} group={group} tags={tags}
+          theme={theme} dark={dark} dispatch={dispatch}
+          removeTagGlobal={removeTagGlobal} setTags={setTags}
+          isMobile={false}
         />
-        <button onClick={() => dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "macro", val: nextMacro(f.macro) })} style={badgeStyle(macroBadge)}>
+        <button
+          onClick={() => dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "macro", val: nextMacro(f.macro) })}
+          style={badgeStyle(macroBadge)}
+        >
           <span style={{ fontSize: 10 }}>{(macroStatuses as any)[f.macro]?.icon}</span>
           {(macroStatuses as any)[f.macro]?.label}
         </button>
-        <button onClick={() => dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "micro", val: nextMicro(f.micro) })} style={badgeStyle(microBadge)}>
+        <button
+          onClick={() => dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "micro", val: nextMicro(f.micro) })}
+          style={badgeStyle(microBadge)}
+        >
           <span style={{ fontSize: 10 }}>{(microStatuses as any)[f.micro]?.icon}</span>
           {(microStatuses as any)[f.micro]?.label}
         </button>
         <button
-          onClick={() => { setEditing(true); setEditLabel(f.label); setEditNote(f.note); }}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.4, padding: 2 }}
+          onClick={() => setEditing(true)}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.4, padding: "2px 4px" }}
         >
           {"\u270F\uFE0F"}
         </button>
         <button
           onClick={() => setDeleteModal({ subId: sub.id, gId: group.id, fId: f.id, label: f.label })}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.3, padding: 2, color: theme.textMuted }}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.3, padding: "2px 4px", color: theme.textMuted }}
         >
           {"\u00D7"}
         </button>
       </div>
       {showNote && (
         <div style={{
-          padding: "8px 16px 12px 62px",
-          background: theme.noteBg,
-          borderTop: "1px solid " + theme.noteBorder,
+          padding: "8px 16px 12px 80px",
+          background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder,
           borderRadius: "0 0 10px 10px",
         }}>
           <span style={{ fontSize: 12, color: theme.noteText, lineHeight: 1.7 }}>{f.note}</span>
@@ -990,7 +1208,7 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
 }
 
 // ─── Tag Area ─────────────────────────────────────────────────
-function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGlobal, setTags }: any) {
+function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGlobal, setTags, isMobile }: any) {
   const [open, setOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [newTagLabel, setNewTagLabel] = useState("");
@@ -1008,16 +1226,16 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
   const activeTags = tags.filter((t: Tag) => feature.tags.includes(t.id));
 
   return (
-    <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "nowrap" as const, flexShrink: 0, position: "relative" as const }}>
+    <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" as const, flexShrink: 0, position: "relative" as const }}>
       {activeTags.map((t: Tag) => (
         <span key={t.id} style={{
           background: t.color + "22", color: t.color, border: "1px solid " + t.color + "55",
-          borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 600,
+          borderRadius: 999, padding: "2px 8px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
           display: "inline-flex", alignItems: "center", gap: 3,
         }}>
           {t.label}
           <button
-            onClick={() => dispatch({ type: "TT", subId: sub.id, gId: group.id, fId: feature.id, tagId: t.id })}
+            onClick={(e) => { e.stopPropagation(); dispatch({ type: "TT", subId: sub.id, gId: group.id, fId: feature.id, tagId: t.id }); }}
             style={{ background: "none", border: "none", cursor: "pointer", color: t.color, fontSize: 10, padding: 0 }}
           >
             {"\u00D7"}
@@ -1025,10 +1243,10 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
         </span>
       ))}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         style={{
           background: theme.surfaceAlt, border: "1px solid " + theme.border,
-          borderRadius: 999, padding: "2px 8px", fontSize: 11, cursor: "pointer",
+          borderRadius: 999, padding: "2px 8px", fontSize: isMobile ? 10 : 11, cursor: "pointer",
           color: theme.textSub, fontFamily: "Lexend, sans-serif",
         }}
       >
@@ -1036,13 +1254,17 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
       </button>
       {open && (
         <div style={{
-          position: "absolute" as const, top: "calc(100% + 6px)", left: 0, zIndex: 9999,
+          position: "absolute" as const, top: "calc(100% + 6px)",
+          left: isMobile ? "auto" : 0,
+          right: isMobile ? 0 : "auto",
+          zIndex: 9999,
           background: theme.surface, border: "1px solid " + theme.border,
-          borderRadius: 10, padding: 8, minWidth: 200, boxShadow: theme.shadowMd,
+          borderRadius: 10, padding: 8, minWidth: isMobile ? 180 : 200, boxShadow: theme.shadowMd,
         }}>
           <input
             value={tagSearch}
             onChange={e => setTagSearch(e.target.value)}
+            onClick={e => e.stopPropagation()}
             placeholder="Search tags..."
             style={{
               width: "100%", padding: "5px 8px", borderRadius: 6,
@@ -1065,7 +1287,7 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
                     }}
                   >
                     <span
-                      onClick={() => dispatch({ type: "TT", subId: sub.id, gId: group.id, fId: feature.id, tagId: t.id })}
+                      onClick={(e) => { e.stopPropagation(); dispatch({ type: "TT", subId: sub.id, gId: group.id, fId: feature.id, tagId: t.id }); }}
                       style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, cursor: "pointer" }}
                     >
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.color, flexShrink: 0 }} />
@@ -1073,7 +1295,7 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
                       {isSelected && <span style={{ color: t.color, fontWeight: 700 }}>{"\u2713"}</span>}
                     </span>
                     <button
-                      onClick={() => removeTagGlobal(t.id)}
+                      onClick={(e) => { e.stopPropagation(); removeTagGlobal(t.id); }}
                       style={{ background: "none", border: "none", cursor: "pointer", color: theme.textMuted, fontSize: 10, padding: 0 }}
                     >
                       {"\u00D7"}
@@ -1086,6 +1308,7 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
             <input
               value={newTagLabel}
               onChange={e => setNewTagLabel(e.target.value)}
+              onClick={e => e.stopPropagation()}
               placeholder="New tag..."
               onKeyDown={e => {
                 if (e.key === "Enter" && newTagLabel.trim()) {
@@ -1102,7 +1325,8 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
               }}
             />
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (newTagLabel.trim()) {
                   const color = TAG_PALETTE[tags.length % TAG_PALETTE.length];
                   const id = "t-" + Date.now();
@@ -1126,7 +1350,7 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
 }
 
 // ─── Add Feature Form ─────────────────────────────────────────
-function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, getNextGid }: any) {
+function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, getNextGid, isMobile }: any) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
@@ -1174,13 +1398,13 @@ function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, g
 
   return (
     <div style={{ padding: "8px 0", marginTop: 4 }}>
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        <div style={{ flex: 1, position: "relative" as const }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: isMobile ? "wrap" as const : "nowrap" as const }}>
+        <div style={{ flex: "1 1 auto", position: "relative" as const, minWidth: isMobile ? "100%" : 0 }}>
           <input
             value={label}
             onChange={e => { setLabel(e.target.value); setError(""); }}
             onKeyDown={e => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") setOpen(false); }}
-            placeholder="Nom de la solution, ou #42 pour dupliquer"
+            placeholder={isMobile ? "Nom ou #42 pour dupliquer" : "Nom de la solution, ou #42 pour dupliquer"}
             autoFocus
             style={{
               width: "100%", padding: "7px 12px", borderRadius: 8,
@@ -1200,32 +1424,34 @@ function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, g
             </span>
           )}
         </div>
-        <button
-          onClick={() => setShowNote(!showNote)}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: showNote ? 1 : 0.4 }}
-        >
-          {"\uD83D\uDCDD"}
-        </button>
-        <button
-          onClick={handleSubmit}
-          style={{
-            padding: "6px 12px", borderRadius: 6, border: "none",
-            background: axis.accent, color: "#fff", fontSize: 12,
-            fontFamily: "Lexend, sans-serif", cursor: "pointer", fontWeight: 600,
-          }}
-        >
-          OK
-        </button>
-        <button
-          onClick={() => setOpen(false)}
-          style={{
-            padding: "6px 10px", borderRadius: 6, border: "none",
-            background: "transparent", color: theme.textMuted, fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          {"\u00D7"}
-        </button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button
+            onClick={() => setShowNote(!showNote)}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: showNote ? 1 : 0.4 }}
+          >
+            {"\uD83D\uDCDD"}
+          </button>
+          <button
+            onClick={handleSubmit}
+            style={{
+              padding: "6px 12px", borderRadius: 6, border: "none",
+              background: axis.accent, color: "#fff", fontSize: 12,
+              fontFamily: "Lexend, sans-serif", cursor: "pointer", fontWeight: 600,
+            }}
+          >
+            OK
+          </button>
+          <button
+            onClick={() => setOpen(false)}
+            style={{
+              padding: "6px 10px", borderRadius: 6, border: "none",
+              background: "transparent", color: theme.textMuted, fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            {"\u00D7"}
+          </button>
+        </div>
       </div>
       {showNote && (
         <textarea
@@ -1301,7 +1527,7 @@ function AddGroupButton({ sub, dispatch, theme }: any) {
 function AllView({ allSubs, tags, theme, dark, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
-  dispatch, totalFeatures, removeTagGlobal, setTags }: any) {
+  dispatch, totalFeatures, removeTagGlobal, setTags, isMobile }: any) {
 
   // Collect all features with metadata
   const allFeatures: { f: Feature; tabIndex: number; subName: string; groupName: string; sub: Sub; group: any }[] = [];
@@ -1318,56 +1544,74 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
   const filtered = allFeatures.filter(item => matchesFilters(item.f));
 
   const ctrl: React.CSSProperties = {
-    padding: "7px 12px", borderRadius: 8, border: "1px solid " + theme.border,
-    background: theme.surface, fontSize: 12, fontFamily: "Lexend, sans-serif",
-    color: theme.text, outline: "none", cursor: "pointer",
+    padding: isMobile ? "6px 10px" : "7px 12px",
+    borderRadius: 8,
+    border: "1px solid " + theme.border,
+    background: theme.surface,
+    fontSize: isMobile ? 11 : 12,
+    fontFamily: "Lexend, sans-serif",
+    color: theme.text,
+    outline: "none",
+    cursor: "pointer",
   };
 
   return (
-    <div style={{ maxWidth: 1800, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 1800, margin: "0 auto", padding: isMobile ? "12px 8px" : "24px 16px" }}>
       {/* Header */}
-      <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: theme.shadowMd, marginBottom: "2.5rem" }}>
-        <div style={{ background: "linear-gradient(135deg, #2a2926, #1a1915)", padding: "14px 24px" }}>
-          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, opacity: 0.8, color: "#f0ede6" }}>
+      <div style={{ borderRadius: isMobile ? 14 : 20, overflow: "hidden", boxShadow: theme.shadowMd, marginBottom: isMobile ? "1.2rem" : "2.5rem" }}>
+        <div style={{ background: "linear-gradient(135deg, #2a2926, #1a1915)", padding: isMobile ? "10px 16px" : "14px 24px" }}>
+          <span style={{ fontSize: isMobile ? 10 : 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, opacity: 0.8, color: "#f0ede6" }}>
             Vue globale
           </span>
         </div>
-        <div style={{ background: theme.surface, padding: "2rem 2.5rem", textAlign: "center" as const, borderTop: "4px solid " + theme.textSub }}>
-          <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-0.03em", color: theme.text }}>Toutes les solutions UX/GD</div>
-          <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>
+        <div style={{ background: theme.surface, padding: isMobile ? "1.2rem 1rem" : "2rem 2.5rem", textAlign: "center" as const, borderTop: "4px solid " + theme.textSub }}>
+          <div style={{ fontSize: isMobile ? 20 : 36, fontWeight: 700, letterSpacing: "-0.03em", color: theme.text }}>
+            {isMobile ? "Toutes les solutions" : "Toutes les solutions UX/GD"}
+          </div>
+          <div style={{ fontSize: isMobile ? 11 : 13, color: theme.textMuted, marginTop: isMobile ? 4 : 8 }}>
             {"\uD83C\uDFAF"} {filtered.length} / {totalFeatures} solutions
           </div>
         </div>
       </div>
 
       {/* Toolbar */}
-      <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 20, alignItems: "center" }}>
-        <input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...ctrl, flex: "1 1 140px", minWidth: 120, cursor: "text" }} />
-        <select value={macroFilter} onChange={e => setMacroFilter(e.target.value)} style={ctrl}>
-          <option value="all">Macro</option>
-          {Object.entries(macroStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
-        </select>
-        <select value={microFilter} onChange={e => setMicroFilter(e.target.value)} style={ctrl}>
-          <option value="all">Micro</option>
-          {Object.entries(microStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
-        </select>
-        <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={ctrl}>
-          <option value="all">Tag</option>
-          {tags.map((t: Tag) => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select>
-        <button
-          onClick={() => setShowNotes(!showNotes)}
-          style={{
-            ...ctrl,
-            background: showNotes ? "#e6faf4" : theme.surface,
-            color: showNotes ? "#005540" : theme.text,
-            borderColor: showNotes ? "#00c48c" : theme.border,
-            fontWeight: showNotes ? 600 : 400,
-          }}
-        >
-          {"\uD83D\uDCDD"} Notes
-        </button>
-      </div>
+      {isMobile ? (
+        <MobileAllToolbar
+          ctrl={ctrl} theme={theme} search={search} setSearch={setSearch}
+          macroFilter={macroFilter} setMacroFilter={setMacroFilter}
+          microFilter={microFilter} setMicroFilter={setMicroFilter}
+          tagFilter={tagFilter} setTagFilter={setTagFilter}
+          tags={tags} showNotes={showNotes} setShowNotes={setShowNotes}
+        />
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 20, alignItems: "center" }}>
+          <input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...ctrl, flex: "1 1 140px", minWidth: 120, cursor: "text" }} />
+          <select value={macroFilter} onChange={e => setMacroFilter(e.target.value)} style={ctrl}>
+            <option value="all">Macro</option>
+            {Object.entries(macroStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+          </select>
+          <select value={microFilter} onChange={e => setMicroFilter(e.target.value)} style={ctrl}>
+            <option value="all">Micro</option>
+            {Object.entries(microStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+          </select>
+          <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={ctrl}>
+            <option value="all">Tag</option>
+            {tags.map((t: Tag) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+          <button
+            onClick={() => setShowNotes(!showNotes)}
+            style={{
+              ...ctrl,
+              background: showNotes ? "#e6faf4" : theme.surface,
+              color: showNotes ? "#005540" : theme.text,
+              borderColor: showNotes ? "#00c48c" : theme.border,
+              fontWeight: showNotes ? 600 : 400,
+            }}
+          >
+            {"\uD83D\uDCDD"} Notes
+          </button>
+        </div>
+      )}
 
       {/* Feature rows */}
       {filtered.map(item => {
@@ -1377,12 +1621,82 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
         const showNote = showNotes && item.f.note;
 
         const badgeStyle = (colors: any): React.CSSProperties => ({
-          borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600,
+          borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
           display: "inline-flex", alignItems: "center", gap: 4,
           background: colors.bg, border: "1px solid " + colors.border, color: colors.text,
           cursor: "pointer", fontFamily: "Lexend, sans-serif",
         });
 
+        if (isMobile) {
+          return (
+            <div key={item.tabIndex + "-" + item.f.gid} style={{ marginBottom: 2 }}>
+              <div style={{
+                padding: "10px 12px",
+                background: item.f.macro !== "none" ? macroBadge.bg + "CC" : theme.surface,
+                borderRadius: showNote ? "10px 10px 0 0" : 10,
+              }}>
+                {/* Top: breadcrumb + label */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, background: axis.accent + "18",
+                    border: "1px solid " + axis.accent + "44", color: axis.accent,
+                    borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginTop: 2,
+                  }}>
+                    #{item.f.gid}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 9, color: theme.textMuted, marginBottom: 2 }}>
+                      <span style={{ color: axis.accent, fontWeight: 600 }}>{item.subName}</span>
+                      {item.groupName !== "general" && <span>{" \u203A "}{item.groupName}</span>}
+                    </div>
+                    <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: item.f.label }} />
+                  </div>
+                </div>
+                {/* Bottom: badges */}
+                <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, alignItems: "center" }}>
+                  <button
+                    onClick={() => dispatch(item.tabIndex, {
+                      type: "UF", subId: item.sub.id, gId: item.group.id,
+                      fId: item.f.id, field: "macro", val: nextMacro(item.f.macro)
+                    })}
+                    style={badgeStyle(macroBadge)}
+                  >
+                    <span style={{ fontSize: 9 }}>{(macroStatuses as any)[item.f.macro]?.icon}</span>
+                    {(macroStatuses as any)[item.f.macro]?.label}
+                  </button>
+                  <button
+                    onClick={() => dispatch(item.tabIndex, {
+                      type: "UF", subId: item.sub.id, gId: item.group.id,
+                      fId: item.f.id, field: "micro", val: nextMicro(item.f.micro)
+                    })}
+                    style={badgeStyle(microBadge)}
+                  >
+                    <span style={{ fontSize: 9 }}>{(microStatuses as any)[item.f.micro]?.icon}</span>
+                    {(microStatuses as any)[item.f.micro]?.label}
+                  </button>
+                  <TagArea
+                    feature={item.f} sub={item.sub} group={item.group}
+                    tags={tags} theme={theme} dark={dark}
+                    dispatch={(action: ReducerAction) => dispatch(item.tabIndex, action)}
+                    removeTagGlobal={removeTagGlobal} setTags={setTags}
+                    isMobile={true}
+                  />
+                </div>
+              </div>
+              {showNote && (
+                <div style={{
+                  padding: "6px 12px 10px 12px",
+                  background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder,
+                  borderRadius: "0 0 10px 10px",
+                }}>
+                  <span style={{ fontSize: 11, color: theme.noteText, lineHeight: 1.7 }}>{item.f.note}</span>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Desktop AllView row
         return (
           <div key={item.tabIndex + "-" + item.f.gid} style={{ marginBottom: 1 }}>
             <div style={{
@@ -1421,6 +1735,7 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
                 dispatch={(action: ReducerAction) => dispatch(item.tabIndex, action)}
                 removeTagGlobal={removeTagGlobal}
                 setTags={setTags}
+                isMobile={false}
               />
               {/* Macro */}
               <button
@@ -1461,6 +1776,51 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
   );
 }
 
+// ─── Mobile All Toolbar ───────────────────────────────────────
+function MobileAllToolbar({ ctrl, theme, search, setSearch, macroFilter, setMacroFilter,
+  microFilter, setMicroFilter, tagFilter, setTagFilter, tags, showNotes, setShowNotes }: any) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+        <input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...ctrl, flex: 1, minWidth: 0, cursor: "text" }} />
+        <button onClick={() => setFiltersOpen(!filtersOpen)} style={{
+          ...ctrl,
+          fontWeight: filtersOpen ? 600 : 400,
+          flexShrink: 0,
+        }}>
+          {"\u2699"} Filtres
+        </button>
+      </div>
+      {filtersOpen && (
+        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6 }}>
+          <select value={macroFilter} onChange={e => setMacroFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
+            <option value="all">Macro</option>
+            {Object.entries(macroStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+          </select>
+          <select value={microFilter} onChange={e => setMicroFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
+            <option value="all">Micro</option>
+            {Object.entries(microStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+          </select>
+          <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
+            <option value="all">Tag</option>
+            {tags.map((t: Tag) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+          <button onClick={() => setShowNotes(!showNotes)} style={{
+            ...ctrl, flex: "1 1 calc(50% - 3px)",
+            background: showNotes ? "#e6faf4" : theme.surface,
+            color: showNotes ? "#005540" : theme.text,
+            borderColor: showNotes ? "#00c48c" : theme.border,
+            fontWeight: showNotes ? 600 : 400,
+          }}>
+            {"\uD83D\uDCDD"} Notes
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Modals ───────────────────────────────────────────────────
 function ModalBackdrop({ children }: { children: React.ReactNode }) {
   return (
@@ -1468,17 +1828,18 @@ function ModalBackdrop({ children }: { children: React.ReactNode }) {
       position: "fixed" as const, inset: 0, zIndex: 10000,
       background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
       display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 16,
     }}>
       {children}
     </div>
   );
 }
 
-function ConfirmDeleteModal({ theme, label, onCancel, onConfirm }: any) {
+function ConfirmDeleteModal({ theme, label, onCancel, onConfirm, isMobile }: any) {
   return (
     <ModalBackdrop>
       <div style={{
-        background: theme.surface, borderRadius: 14, width: 360, padding: 24,
+        background: theme.surface, borderRadius: 14, width: isMobile ? "100%" : 360, maxWidth: 360, padding: isMobile ? 20 : 24,
         boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif",
       }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 8 }}>Supprimer cette feature ?</div>
@@ -1500,12 +1861,12 @@ function ConfirmDeleteModal({ theme, label, onCancel, onConfirm }: any) {
   );
 }
 
-function NewBesoinModal({ theme, onCancel, onAdd }: any) {
+function NewBesoinModal({ theme, onCancel, onAdd, isMobile }: any) {
   const [name, setName] = useState("");
   return (
     <ModalBackdrop>
       <div style={{
-        background: theme.surface, borderRadius: 14, width: 360, padding: 24,
+        background: theme.surface, borderRadius: 14, width: isMobile ? "100%" : 360, maxWidth: 360, padding: isMobile ? 20 : 24,
         boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif",
       }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 12 }}>Nouveau besoin utilisateur</div>
@@ -1539,12 +1900,12 @@ function NewBesoinModal({ theme, onCancel, onAdd }: any) {
   );
 }
 
-function ExportModal({ theme, csv, onClose }: any) {
+function ExportModal({ theme, csv, onClose, isMobile }: any) {
   const ref = useRef<HTMLTextAreaElement>(null);
   return (
     <ModalBackdrop>
       <div style={{
-        background: theme.surface, borderRadius: 14, width: 500, padding: 24,
+        background: theme.surface, borderRadius: 14, width: isMobile ? "100%" : 500, maxWidth: 500, padding: isMobile ? 16 : 24,
         boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif",
       }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 12 }}>Export CSV</div>
@@ -1554,7 +1915,7 @@ function ExportModal({ theme, csv, onClose }: any) {
           value={csv}
           onClick={() => ref.current?.select()}
           style={{
-            width: "100%", height: 220, fontFamily: "monospace", fontSize: 11,
+            width: "100%", height: isMobile ? 160 : 220, fontFamily: "monospace", fontSize: 11,
             padding: 10, borderRadius: 8, border: "1px solid " + theme.border,
             background: theme.surfaceAlt, color: theme.text, outline: "none",
             resize: "none" as const, boxSizing: "border-box" as const,
@@ -1575,13 +1936,13 @@ function ExportModal({ theme, csv, onClose }: any) {
   );
 }
 
-function ImportModal({ theme, onCancel, onImport }: any) {
+function ImportModal({ theme, onCancel, onImport, isMobile }: any) {
   const [csv, setCsv] = useState("");
   const [error, setError] = useState("");
   return (
     <ModalBackdrop>
       <div style={{
-        background: theme.surface, borderRadius: 14, width: 500, padding: 24,
+        background: theme.surface, borderRadius: 14, width: isMobile ? "100%" : 500, maxWidth: 500, padding: isMobile ? 16 : 24,
         boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif",
       }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 12 }}>Import CSV</div>
@@ -1590,7 +1951,7 @@ function ImportModal({ theme, onCancel, onImport }: any) {
           onChange={e => { setCsv(e.target.value); setError(""); }}
           placeholder="Paste CSV content here..."
           style={{
-            width: "100%", height: 220, fontFamily: "monospace", fontSize: 11,
+            width: "100%", height: isMobile ? 160 : 220, fontFamily: "monospace", fontSize: 11,
             padding: 10, borderRadius: 8, border: "1px solid " + theme.border,
             background: theme.surfaceAlt, color: theme.text, outline: "none",
             resize: "none" as const, boxSizing: "border-box" as const,
