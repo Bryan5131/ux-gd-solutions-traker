@@ -93,6 +93,28 @@ export default function TrackerApp() {
   const [newBesoinModal, setNewBesoinModal] = useState<number | null>(null);
   const [exportModal, setExportModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  const handleForceSave = useCallback(async () => {
+    setSaveStatus("saving");
+    const ok = await forceSave({ subs: allSubs, tags, gidCounter });
+    setSaveStatus(ok ? "saved" : "error");
+    setTimeout(() => setSaveStatus(null), 2000);
+  }, [forceSave, allSubs, tags, gidCounter]);
+
+  const handleRefresh = useCallback(async () => {
+    setSaveStatus("refreshing");
+    const refreshed = await refresh();
+    if (refreshed) {
+      setAllSubs(refreshed.subs);
+      setTags(refreshed.tags);
+      setGidCounter(refreshed.gidCounter);
+      setSaveStatus("refreshed");
+    } else {
+      setSaveStatus("error");
+    }
+    setTimeout(() => setSaveStatus(null), 2000);
+  }, [refresh]);
 
   const removeTagGlobal = useCallback((tagId: string) => {
     setTags(prev => prev.filter(t => t.id !== tagId));
