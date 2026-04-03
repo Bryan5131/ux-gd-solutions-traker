@@ -269,8 +269,9 @@ export default function TrackerApp() {
           findFeatureByGid={findFeatureByGid}
           getNextGid={getNextGid}
           setNewBesoinModal={setNewBesoinModal}
-          setExportModal={setExportModal}
-          setImportModal={setImportModal}
+          onForceSave={handleForceSave}
+          onRefresh={handleRefresh}
+          saveStatus={saveStatus}
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
           setDeleteModal={(info: any) => setDeleteModal(info ? { ...info, tabIndex: activeTab } : null)}
