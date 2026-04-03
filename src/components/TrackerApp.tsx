@@ -471,8 +471,9 @@ function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
         tags={tags}
         showNotes={showNotes} setShowNotes={setShowNotes}
         anyOpen={anyOpen} toggleAllSections={toggleAllSections}
-        onExport={() => setExportModal(true)}
-        onImport={() => setImportModal(true)}
+        onForceSave={onForceSave}
+        onRefresh={onRefresh}
+        saveStatus={saveStatus}
         onNewBesoin={() => setNewBesoinModal(tabIndex)}
       />
 
