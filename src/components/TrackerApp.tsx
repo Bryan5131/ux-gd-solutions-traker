@@ -188,8 +188,15 @@ export default function TrackerApp() {
     paddingBottom: 80,
   };
 
+  if (loading || !initialized) {
+    return (
+      <div style={{ ...containerStyle, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ fontSize: 16, color: theme.textSub }}>Chargement...</div>
+      </div>
+    );
+  }
+
   return (
-    <div style={containerStyle}>
       {activeTab === -1 ? (
         <AllView
           allSubs={allSubs}
