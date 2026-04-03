@@ -22,7 +22,7 @@ function useLexend() {
 // ─── Main App ─────────────────────────────────────────────────
 export default function TrackerApp() {
   useLexend();
-  const { state: persistedState, loading, save } = useTrackerPersistence();
+  const { state: persistedState, loading, save, forceSave, refresh } = useTrackerPersistence();
   const [dark, setDark] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [allSubs, setAllSubs] = useState<Sub[][]>(() => getInitialData());
