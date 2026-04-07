@@ -107,6 +107,7 @@ export default function TrackerApp() {
 
   // Modal state
   const [deleteModal, setDeleteModal] = useState<{ tabIndex: number; subId: string; gId: string; fId: number; label: string } | null>(null);
+  const [deleteSubModal, setDeleteSubModal] = useState<{ tabIndex: number; subId: string; label: string } | null>(null);
   const [newBesoinModal, setNewBesoinModal] = useState<number | null>(null);
   const [exportModal, setExportModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
@@ -317,6 +318,7 @@ export default function TrackerApp() {
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
           setDeleteModal={(info: any) => setDeleteModal(info ? { ...info, tabIndex: activeTab } : null)}
+          setDeleteSubModal={(info: any) => setDeleteSubModal(info ? { ...info, tabIndex: activeTab } : null)}
           isMobile={isMobile}
           onRenameTab={(name: string) => renameTab(activeTab, name)}
           axeLabel={axeLabels[TAB_AXES[activeTab]] ?? ""}
@@ -351,6 +353,19 @@ export default function TrackerApp() {
               fId: deleteModal.fId
             });
             setDeleteModal(null);
+          }}
+        />
+      )}
+      {deleteSubModal && (
+        <ConfirmDeleteModal
+          theme={theme}
+          label={deleteSubModal.label}
+          isMobile={isMobile}
+          title="Supprimer cette catégorie ?"
+          onCancel={() => setDeleteSubModal(null)}
+          onConfirm={() => {
+            dispatch(deleteSubModal.tabIndex, { type: "DS", subId: deleteSubModal.subId });
+            setDeleteSubModal(null);
           }}
         />
       )}
@@ -517,7 +532,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
   findFeatureByGid, getNextGid, setNewBesoinModal, onForceSave,
-  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, isMobile, onRenameTab,
+  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, isMobile, onRenameTab,
   axeLabel, onRenameAxe
 }: any) {
   const axis = getAxisColors(tabIndex, dark);
@@ -674,6 +689,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
           setDeleteModal={setDeleteModal}
+          setDeleteSubModal={setDeleteSubModal}
           isMobile={isMobile}
         />
       ))}
@@ -874,7 +890,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
 // ─── Sub Section ──────────────────────────────────────────────
 function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen,
   collapsed, toggleCollapse, isGroupOpen, toggleGroupOpen, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, isMobile }: any) {
+  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, isMobile }: any) {
 
   const featureCount = sub.groups.reduce((c: number, g: any) => c + g.features.length, 0);
   const showSingleGroup = sub.groups.length === 1 && sub.groups[0].name === "general";
@@ -912,6 +928,12 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
         }}>
           {featureCount} {isMobile ? "" : "solutions UX/GD"}
         </span>
+        <button
+          onClick={e => { e.stopPropagation(); setDeleteSubModal({ subId: sub.id, label: sub.name }); }}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, opacity: 0.5, padding: "2px 4px", color: axis.subText, flexShrink: 0, lineHeight: 1 }}
+        >
+          {"\u00D7"}
+        </button>
         <span style={{
           fontSize: 14, color: axis.subText, transition: "transform 0.2s",
           transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)",
@@ -1977,14 +1999,14 @@ function ModalBackdrop({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ConfirmDeleteModal({ theme, label, onCancel, onConfirm, isMobile }: any) {
+function ConfirmDeleteModal({ theme, label, onCancel, onConfirm, isMobile, title }: any) {
   return (
     <ModalBackdrop>
       <div style={{
         background: theme.surface, borderRadius: 14, width: isMobile ? "100%" : 360, maxWidth: 360, padding: isMobile ? 20 : 24,
         boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif",
       }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 8 }}>Supprimer cette feature ?</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 8 }}>{title ?? "Supprimer cette feature ?"}</div>
         <div style={{ fontSize: 12, color: theme.textSub, marginBottom: 20 }} dangerouslySetInnerHTML={{ __html: label }} />
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={onCancel} style={{
