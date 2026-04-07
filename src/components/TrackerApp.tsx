@@ -45,6 +45,8 @@ export default function TrackerApp() {
   const [tags, setTags] = useState<Tag[]>(() => getInitialTags());
   const [gidCounter, setGidCounter] = useState(1);
   const [initialized, setInitialized] = useState(false);
+  const [showBrouillon, setShowBrouillon] = useState(false);
+  const [brouillonText, setBrouillonText] = useState("");
 
   // Sync from persisted state once loaded
   useEffect(() => {
@@ -54,11 +56,13 @@ export default function TrackerApp() {
       setGidCounter(persistedState.gidCounter);
       setTabNames(persistedState.tabNames);
       setAxeLabels(persistedState.axeLabels);
+      setBrouillonText(persistedState.brouillon ?? "");
       setInitialized(true);
     }
   }, [persistedState, initialized]);
 
   const theme = dark ? darkTheme : lightTheme;
+
 
   // Auto-save on changes (after initialization)
   const saveTrigger = useRef(false);
@@ -68,8 +72,8 @@ export default function TrackerApp() {
       saveTrigger.current = true;
       return;
     }
-    save({ subs: allSubs, tags, gidCounter, tabNames, axeLabels });
-  }, [allSubs, tags, gidCounter, tabNames, axeLabels, initialized, save]);
+    save({ subs: allSubs, tags, gidCounter, tabNames, axeLabels, brouillon: brouillonText });
+  }, [allSubs, tags, gidCounter, tabNames, axeLabels, brouillonText, initialized, save]);
 
   const getNextGid = useCallback(() => {
     const g = gidCounter;
@@ -116,7 +120,7 @@ export default function TrackerApp() {
 
   const handleForceSave = useCallback(async () => {
     setSaveStatus("saving");
-    const ok = await forceSave({ subs: allSubs, tags, gidCounter, tabNames, axeLabels });
+    const ok = await forceSave({ subs: allSubs, tags, gidCounter, tabNames, axeLabels, brouillon: brouillonText });
     setSaveStatus(ok ? "saved" : "error");
     setTimeout(() => setSaveStatus(null), 2000);
   }, [forceSave, allSubs, tags, gidCounter, tabNames, axeLabels]);
@@ -130,6 +134,7 @@ export default function TrackerApp() {
       setGidCounter(refreshed.gidCounter);
       setTabNames(refreshed.tabNames);
       setAxeLabels(refreshed.axeLabels);
+      setBrouillonText(refreshed.brouillon ?? "");
       setSaveStatus("refreshed");
     } else {
       setSaveStatus("error");
@@ -262,7 +267,15 @@ export default function TrackerApp() {
 
   return (
     <div style={containerStyle}>
-      {activeTab === -1 ? (
+      {showBrouillon ? (
+        <BrouillonView
+          text={brouillonText}
+          setText={setBrouillonText}
+          theme={theme}
+          dark={dark}
+          isMobile={isMobile}
+        />
+      ) : activeTab === -1 ? (
         <AllView
           allSubs={allSubs}
           tags={tags}
@@ -331,7 +344,9 @@ export default function TrackerApp() {
       {/* Footer */}
       <Footer
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(t) => { setShowBrouillon(false); setActiveTab(t); }}
+        showBrouillon={showBrouillon}
+        setShowBrouillon={setShowBrouillon}
         dark={dark}
         setDark={setDark}
         theme={theme}
@@ -424,7 +439,7 @@ export default function TrackerApp() {
 }
 
 // ─── Footer ───────────────────────────────────────────────────
-function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNames, onAddTab }: {
+function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNames, onAddTab, showBrouillon, setShowBrouillon }: {
   activeTab: number;
   setActiveTab: (t: number) => void;
   dark: boolean;
@@ -433,6 +448,8 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNa
   isMobile: boolean;
   tabNames: string[];
   onAddTab: () => void;
+  showBrouillon: boolean;
+  setShowBrouillon: (v: boolean) => void;
 }) {
   const [burgerOpen, setBurgerOpen] = React.useState(false);
 
@@ -481,6 +498,23 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNa
             padding: "6px 0",
             fontFamily: "Lexend, sans-serif",
           }}>
+            {/* Brouillon */}
+            <button
+              onClick={() => { setShowBrouillon(!showBrouillon); setBurgerOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                width: "100%", padding: "10px 16px",
+                background: showBrouillon ? theme.surfaceAlt : "none",
+                border: "none", cursor: "pointer",
+                fontSize: 13, color: theme.text, fontFamily: "Lexend, sans-serif",
+                textAlign: "left" as const,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>📝</span>
+              Brouillon
+            </button>
+            {/* Separator */}
+            <div style={{ height: 1, background: theme.border, margin: "4px 0" }} />
             {/* Dark mode toggle */}
             <button
               onClick={() => { setDark(!dark); setBurgerOpen(false); }}
@@ -2104,6 +2138,79 @@ function ModalBackdrop({ children }: { children: React.ReactNode }) {
       padding: 16,
     }}>
       {children}
+    </div>
+  );
+}
+
+// ─── Brouillon View ───────────────────────────────────────────
+function BrouillonView({ text, setText, theme, dark, isMobile }: {
+  text: string;
+  setText: (v: string) => void;
+  theme: any;
+  dark: boolean;
+  isMobile: boolean;
+}) {
+  const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+  const charCount = text.length;
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      padding: isMobile ? "1.2rem 1rem" : "2.5rem",
+      paddingBottom: isMobile ? 80 : 100,
+      fontFamily: "Lexend, sans-serif",
+    }}>
+      <div style={{
+        maxWidth: 800,
+        margin: "0 auto",
+      }}>
+        {/* Header */}
+        <div style={{ marginBottom: isMobile ? "1rem" : "1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 700, color: theme.text, letterSpacing: "-0.02em" }}>
+              Brouillon
+            </div>
+            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 3 }}>
+              {charCount} caractère{charCount !== 1 ? "s" : ""} · {wordCount} mot{wordCount !== 1 ? "s" : ""}
+            </div>
+          </div>
+          <button
+            onClick={() => setText("")}
+            title="Effacer"
+            style={{
+              background: "none", border: "1px solid " + theme.border,
+              borderRadius: 8, padding: "6px 12px", cursor: "pointer",
+              fontSize: 11, color: theme.textMuted, fontFamily: "Lexend, sans-serif",
+            }}
+          >
+            Effacer
+          </button>
+        </div>
+
+        {/* Textarea */}
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Colle ou note du texte ici..."
+          autoFocus
+          style={{
+            width: "100%",
+            minHeight: isMobile ? "calc(100vh - 180px)" : "calc(100vh - 200px)",
+            background: theme.surfaceAlt,
+            border: "1px solid " + theme.border,
+            borderRadius: 12,
+            padding: isMobile ? "14px" : "20px",
+            fontSize: isMobile ? 14 : 15,
+            lineHeight: 1.7,
+            color: theme.text,
+            fontFamily: "Lexend, sans-serif",
+            resize: "none" as const,
+            outline: "none",
+            boxSizing: "border-box" as const,
+            caretColor: theme.text,
+          }}
+        />
+      </div>
     </div>
   );
 }
