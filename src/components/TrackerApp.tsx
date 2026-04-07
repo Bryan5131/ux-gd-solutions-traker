@@ -52,6 +52,8 @@ export default function TrackerApp() {
       setAllSubs(persistedState.subs);
       setTags(persistedState.tags);
       setGidCounter(persistedState.gidCounter);
+      setTabNames(persistedState.tabNames);
+      setAxeLabels(persistedState.axeLabels);
       setInitialized(true);
     }
   }, [persistedState, initialized]);
@@ -66,8 +68,8 @@ export default function TrackerApp() {
       saveTrigger.current = true;
       return;
     }
-    save({ subs: allSubs, tags, gidCounter });
-  }, [allSubs, tags, gidCounter, initialized, save]);
+    save({ subs: allSubs, tags, gidCounter, tabNames, axeLabels });
+  }, [allSubs, tags, gidCounter, tabNames, axeLabels, initialized, save]);
 
   const getNextGid = useCallback(() => {
     const g = gidCounter;
@@ -112,10 +114,10 @@ export default function TrackerApp() {
 
   const handleForceSave = useCallback(async () => {
     setSaveStatus("saving");
-    const ok = await forceSave({ subs: allSubs, tags, gidCounter });
+    const ok = await forceSave({ subs: allSubs, tags, gidCounter, tabNames, axeLabels });
     setSaveStatus(ok ? "saved" : "error");
     setTimeout(() => setSaveStatus(null), 2000);
-  }, [forceSave, allSubs, tags, gidCounter]);
+  }, [forceSave, allSubs, tags, gidCounter, tabNames, axeLabels]);
 
   const handleRefresh = useCallback(async () => {
     setSaveStatus("refreshing");
@@ -124,6 +126,8 @@ export default function TrackerApp() {
       setAllSubs(refreshed.subs);
       setTags(refreshed.tags);
       setGidCounter(refreshed.gidCounter);
+      setTabNames(refreshed.tabNames);
+      setAxeLabels(refreshed.axeLabels);
       setSaveStatus("refreshed");
     } else {
       setSaveStatus("error");

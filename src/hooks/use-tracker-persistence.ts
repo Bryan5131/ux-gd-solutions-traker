@@ -1,12 +1,36 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sub, Tag } from "@/lib/tracker-types";
-import { getInitialData, getInitialTags } from "@/lib/tracker-data";
+import { getInitialData, getInitialTags, TAB_NAMES, AXE_LABELS } from "@/lib/tracker-data";
 
-interface TrackerState {
+export interface TrackerState {
   subs: Sub[][];
   tags: Tag[];
   gidCounter: number;
+  tabNames: string[];
+  axeLabels: string[];
+}
+
+// Encode state into the subs JSONB field with a versioned wrapper
+function encodeSubsField(state: TrackerState): any {
+  return { v: 2, data: state.subs, tabNames: state.tabNames, axeLabels: state.axeLabels };
+}
+
+// Decode subs JSONB field — handles both old (raw array) and new (wrapped) formats
+function decodeSubsField(raw: any): { subs: Sub[][]; tabNames: string[]; axeLabels: string[] } {
+  if (raw && raw.v === 2) {
+    return {
+      subs: raw.data as Sub[][],
+      tabNames: raw.tabNames ?? [...TAB_NAMES],
+      axeLabels: raw.axeLabels ?? [...AXE_LABELS],
+    };
+  }
+  // Legacy format: raw is Sub[][]
+  return {
+    subs: raw as Sub[][],
+    tabNames: [...TAB_NAMES],
+    axeLabels: [...AXE_LABELS],
+  };
 }
 
 export function useTrackerPersistence() {
@@ -30,11 +54,14 @@ export function useTrackerPersistence() {
           return;
         }
 
-        if (data && data.subs && (data.subs as any[]).length > 0) {
+        if (data && data.subs) {
+          const decoded = decodeSubsField(data.subs);
           setState({
-            subs: data.subs as unknown as Sub[][],
+            subs: decoded.subs,
             tags: data.tags as unknown as Tag[],
             gidCounter: data.gid_counter,
+            tabNames: decoded.tabNames,
+            axeLabels: decoded.axeLabels,
           });
         } else {
           // First time: seed with initial data
@@ -55,13 +82,13 @@ export function useTrackerPersistence() {
       subs.forEach(tab => tab.forEach(s => s.groups.forEach(g => { gidCounter += g.features.length; })));
       gidCounter += 1;
 
-      const newState = { subs, tags, gidCounter };
+      const newState: TrackerState = { subs, tags, gidCounter, tabNames: [...TAB_NAMES], axeLabels: [...AXE_LABELS] };
       setState(newState);
 
       // Insert into Supabase
       await supabase.from("tracker_state").upsert({
         id: "main",
-        subs: subs as any,
+        subs: encodeSubsField(newState) as any,
         tags: tags as any,
         gid_counter: gidCounter,
         updated_at: new Date().toISOString(),
@@ -79,7 +106,7 @@ export function useTrackerPersistence() {
     saveTimeout.current = setTimeout(async () => {
       try {
         const { error } = await supabase.from("tracker_state").update({
-          subs: newState.subs as any,
+          subs: encodeSubsField(newState) as any,
           tags: newState.tags as any,
           gid_counter: newState.gidCounter,
           updated_at: new Date().toISOString(),
@@ -98,7 +125,7 @@ export function useTrackerPersistence() {
     setState(currentState);
     try {
       const { error } = await supabase.from("tracker_state").update({
-        subs: currentState.subs as any,
+        subs: encodeSubsField(currentState) as any,
         tags: currentState.tags as any,
         gid_counter: currentState.gidCounter,
         updated_at: new Date().toISOString(),
@@ -121,10 +148,13 @@ export function useTrackerPersistence() {
         .maybeSingle();
       if (error) throw error;
       if (data && data.subs) {
-        const refreshed = {
-          subs: data.subs as unknown as Sub[][],
+        const decoded = decodeSubsField(data.subs);
+        const refreshed: TrackerState = {
+          subs: decoded.subs,
           tags: data.tags as unknown as Tag[],
           gidCounter: data.gid_counter,
+          tabNames: decoded.tabNames,
+          axeLabels: decoded.axeLabels,
         };
         setState(refreshed);
         return refreshed;
