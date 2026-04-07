@@ -74,4 +74,5 @@ export interface ReducerAction {
   tSId?: string;
   drag?: any;
   newGid?: number;
+  feat?: Feature;
 }

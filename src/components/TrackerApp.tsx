@@ -108,6 +108,7 @@ export default function TrackerApp() {
   // Modal state
   const [deleteModal, setDeleteModal] = useState<{ tabIndex: number; subId: string; gId: string; fId: number; label: string } | null>(null);
   const [deleteSubModal, setDeleteSubModal] = useState<{ tabIndex: number; subId: string; label: string } | null>(null);
+  const [moveFeatModal, setMoveFeatModal] = useState<{ tabIndex: number; subId: string; gId: string; feature: any } | null>(null);
   const [newBesoinModal, setNewBesoinModal] = useState<number | null>(null);
   const [exportModal, setExportModal] = useState(false);
   const [importModal, setImportModal] = useState(false);
@@ -319,6 +320,7 @@ export default function TrackerApp() {
           setTags={setTags}
           setDeleteModal={(info: any) => setDeleteModal(info ? { ...info, tabIndex: activeTab } : null)}
           setDeleteSubModal={(info: any) => setDeleteSubModal(info ? { ...info, tabIndex: activeTab } : null)}
+          setMoveFeatModal={(info: any) => setMoveFeatModal(info ? { ...info, tabIndex: activeTab } : null)}
           isMobile={isMobile}
           onRenameTab={(name: string) => renameTab(activeTab, name)}
           axeLabel={axeLabels[TAB_AXES[activeTab]] ?? ""}
@@ -396,6 +398,24 @@ export default function TrackerApp() {
           onImport={(csv: string) => {
             importCsv(csv);
             setImportModal(false);
+          }}
+        />
+      )}
+      {moveFeatModal && (
+        <MoveFeatureModal
+          theme={theme}
+          isMobile={isMobile}
+          feature={moveFeatModal.feature}
+          allSubs={allSubs}
+          tabNames={tabNames}
+          sourceTabIndex={moveFeatModal.tabIndex}
+          sourceSubId={moveFeatModal.subId}
+          sourceGId={moveFeatModal.gId}
+          onCancel={() => setMoveFeatModal(null)}
+          onMove={(targetTabIndex: number, targetSubId: string, targetGId: string) => {
+            dispatch(moveFeatModal.tabIndex, { type: "DF", subId: moveFeatModal.subId, gId: moveFeatModal.gId, fId: moveFeatModal.feature.id });
+            dispatch(targetTabIndex, { type: "INSERT_F", subId: targetSubId, gId: targetGId, feat: moveFeatModal.feature });
+            setMoveFeatModal(null);
           }}
         />
       )}
@@ -532,7 +552,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
   findFeatureByGid, getNextGid, setNewBesoinModal, onForceSave,
-  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, isMobile, onRenameTab,
+  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile, onRenameTab,
   axeLabel, onRenameAxe
 }: any) {
   const axis = getAxisColors(tabIndex, dark);
@@ -690,6 +710,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
           setTags={setTags}
           setDeleteModal={setDeleteModal}
           setDeleteSubModal={setDeleteSubModal}
+          setMoveFeatModal={setMoveFeatModal}
           isMobile={isMobile}
         />
       ))}
@@ -890,7 +911,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
 // ─── Sub Section ──────────────────────────────────────────────
 function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen,
   collapsed, toggleCollapse, isGroupOpen, toggleGroupOpen, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, isMobile }: any) {
+  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile }: any) {
 
   const featureCount = sub.groups.reduce((c: number, g: any) => c + g.features.length, 0);
   const showSingleGroup = sub.groups.length === 1 && sub.groups[0].name === "general";
@@ -990,6 +1011,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
               removeTagGlobal={removeTagGlobal}
               setTags={setTags}
               setDeleteModal={setDeleteModal}
+              setMoveFeatModal={setMoveFeatModal}
               tabIndex={tabIndex}
               isMobile={isMobile}
             />
@@ -1014,6 +1036,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
                 removeTagGlobal={removeTagGlobal}
                 setTags={setTags}
                 setDeleteModal={setDeleteModal}
+                setMoveFeatModal={setMoveFeatModal}
                 tabIndex={tabIndex}
                 isMobile={isMobile}
               />
@@ -1029,7 +1052,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
 // ─── Group Section ────────────────────────────────────────────
 function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
   dispatch, matchesFilters, showNotes, findFeatureByGid, getNextGid, dragRef,
-  removeTagGlobal, setTags, setDeleteModal, tabIndex, isMobile }: any) {
+  removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
@@ -1107,7 +1130,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
           showNotes={showNotes} findFeatureByGid={findFeatureByGid}
           getNextGid={getNextGid} dragRef={dragRef}
           removeTagGlobal={removeTagGlobal} setTags={setTags}
-          setDeleteModal={setDeleteModal} tabIndex={tabIndex}
+          setDeleteModal={setDeleteModal} setMoveFeatModal={setMoveFeatModal} tabIndex={tabIndex}
           isMobile={isMobile}
         />
       )}
@@ -1118,7 +1141,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
 // ─── Group Features (shared between single-group and multi-group) ──
 function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesFilters,
   showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags,
-  setDeleteModal, tabIndex, isMobile }: any) {
+  setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
   return (
     <div style={{ padding: "4px 0" }}>
       {group.features.filter(matchesFilters).map((f: Feature) => (
@@ -1137,6 +1160,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
           setDeleteModal={setDeleteModal}
+          setMoveFeatModal={setMoveFeatModal}
           tabIndex={tabIndex}
           isMobile={isMobile}
         />
@@ -1157,7 +1181,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
 
 // ─── Feature Row ──────────────────────────────────────────────
 function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
-  showNotes, dragRef, removeTagGlobal, setTags, setDeleteModal, tabIndex, isMobile }: any) {
+  showNotes, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
 
   const [editing, setEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(feature.label);
@@ -1371,6 +1395,13 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
         >
           <span style={{ fontSize: 10 }}>{(microStatuses as any)[f.micro]?.icon}</span>
           {(microStatuses as any)[f.micro]?.label}
+        </button>
+        <button
+          onClick={() => setMoveFeatModal({ subId: sub.id, gId: group.id, feature: f })}
+          title="Déplacer vers..."
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.4, padding: "2px 4px", color: theme.textMuted }}
+        >
+          {"\u21AA"}
         </button>
         <button
           onClick={() => setEditing(true)}
@@ -2023,6 +2054,117 @@ function ModalBackdrop({ children }: { children: React.ReactNode }) {
     }}>
       {children}
     </div>
+  );
+}
+
+// ─── Move Feature Modal ───────────────────────────────────────
+function MoveFeatureModal({ theme, isMobile, feature, allSubs, tabNames, sourceTabIndex, sourceSubId, sourceGId, onCancel, onMove }: any) {
+  const [selTab, setSelTab] = useState(sourceTabIndex);
+  const [selSubId, setSelSubId] = useState<string>("");
+  const [selGId, setSelGId] = useState<string>("");
+
+  const subs: any[] = allSubs[selTab] ?? [];
+  const selSub = subs.find((s: any) => s.id === selSubId);
+  const groups = selSub?.groups ?? [];
+  const showGroups = groups.length > 1 || (groups.length === 1 && groups[0].name !== "general");
+
+  // Auto-select first valid sub/group when tab changes
+  useEffect(() => {
+    const available = (allSubs[selTab] ?? []).filter((s: any) => !(s.id === sourceSubId && selTab === sourceTabIndex));
+    const first = available[0];
+    setSelSubId(first?.id ?? (allSubs[selTab]?.[0]?.id ?? ""));
+    setSelGId("");
+  }, [selTab]);
+
+  useEffect(() => {
+    const firstGroup = selSub?.groups?.[0];
+    setSelGId(firstGroup?.id ?? "");
+  }, [selSubId, selSub]);
+
+  const targetGId = showGroups ? selGId : (groups[0]?.id ?? "");
+  const isValid = selSubId && targetGId && !(selTab === sourceTabIndex && selSubId === sourceSubId && targetGId === sourceGId);
+
+  return (
+    <ModalBackdrop>
+      <div style={{ background: theme.surface, borderRadius: 14, width: isMobile ? "95%" : 420, maxWidth: 420, padding: isMobile ? 20 : 24, boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 4 }}>Déplacer vers...</div>
+        <div style={{ fontSize: 11, color: theme.textSub, marginBottom: 16 }} dangerouslySetInnerHTML={{ __html: feature.label }} />
+
+        {/* Tab selection */}
+        <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Onglet</div>
+        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 }}>
+          {tabNames.map((name: string, i: number) => (
+            <button
+              key={i}
+              onClick={() => setSelTab(i)}
+              style={{
+                padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: selTab === i ? 700 : 400,
+                border: "1px solid " + (selTab === i ? getAxisColors(i, false).accent : theme.border),
+                background: selTab === i ? getAxisColors(i, false).accentLight : theme.surface,
+                color: selTab === i ? getAxisColors(i, false).accent : theme.textSub,
+                cursor: "pointer", fontFamily: "Lexend, sans-serif",
+              }}
+            >{name}</button>
+          ))}
+        </div>
+
+        {/* Sub selection */}
+        <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Catégorie</div>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 4, marginBottom: 16, maxHeight: 180, overflowY: "auto" as const }}>
+          {subs.length === 0 ? (
+            <div style={{ fontSize: 12, color: theme.textMuted, padding: "8px 0" }}>Aucune catégorie dans cet onglet.</div>
+          ) : subs.map((s: any) => {
+            const isSrc = selTab === sourceTabIndex && s.id === sourceSubId;
+            return (
+              <button
+                key={s.id}
+                onClick={() => !isSrc && setSelSubId(s.id)}
+                style={{
+                  padding: "8px 12px", borderRadius: 8, fontSize: 12, textAlign: "left" as const,
+                  border: "1px solid " + (selSubId === s.id ? getAxisColors(selTab, false).accent : theme.border),
+                  background: selSubId === s.id ? getAxisColors(selTab, false).accentLight : theme.surface,
+                  color: isSrc ? theme.textMuted : (selSubId === s.id ? getAxisColors(selTab, false).accent : theme.text),
+                  cursor: isSrc ? "not-allowed" : "pointer",
+                  fontFamily: "Lexend, sans-serif", fontWeight: selSubId === s.id ? 600 : 400,
+                  opacity: isSrc ? 0.4 : 1,
+                }}
+              >{s.name}{isSrc ? " (source)" : ""}</button>
+            );
+          })}
+        </div>
+
+        {/* Group selection (only if sub has multiple groups) */}
+        {showGroups && selSubId && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Sous-groupe</div>
+            <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 }}>
+              {groups.map((g: any) => (
+                <button
+                  key={g.id}
+                  onClick={() => setSelGId(g.id)}
+                  style={{
+                    padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: selGId === g.id ? 700 : 400,
+                    border: "1px solid " + (selGId === g.id ? getAxisColors(selTab, false).accent : theme.border),
+                    background: selGId === g.id ? getAxisColors(selTab, false).accentLight : theme.surface,
+                    color: selGId === g.id ? getAxisColors(selTab, false).accent : theme.textSub,
+                    cursor: "pointer", fontFamily: "Lexend, sans-serif",
+                  }}
+                >{g.name}</button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid " + theme.border, background: theme.surface, fontSize: 12, fontFamily: "Lexend, sans-serif", color: theme.text, cursor: "pointer" }}>Annuler</button>
+          <button
+            onClick={() => isValid && onMove(selTab, selSubId, targetGId)}
+            disabled={!isValid}
+            style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: isValid ? "#00c48c" : theme.border, fontSize: 12, fontFamily: "Lexend, sans-serif", color: isValid ? "#003d2e" : theme.textMuted, cursor: isValid ? "pointer" : "not-allowed", fontWeight: 600 }}
+          >Déplacer</button>
+        </div>
+      </div>
+    </ModalBackdrop>
   );
 }
 

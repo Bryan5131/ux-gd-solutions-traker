@@ -129,6 +129,19 @@ export function trackerReducer(subs: Sub[], action: ReducerAction): Sub[] {
     case "RS": {
       return subs.map(s => s.id !== action.subId ? s : { ...s, name: action.name || s.name });
     }
+    case "INSERT_F": {
+      return subs.map(s => {
+        if (s.id !== action.subId) return s;
+        return {
+          ...s,
+          groups: s.groups.map(g => {
+            if (g.id !== action.gId) return g;
+            const maxId = g.features.reduce((m, f) => Math.max(m, f.id), 0);
+            return { ...g, features: [...g.features, { ...action.feat!, id: maxId + 1 }] };
+          })
+        };
+      });
+    }
     case "AS": {
       const newSub: Sub = {
         id: "s-" + Date.now(),
