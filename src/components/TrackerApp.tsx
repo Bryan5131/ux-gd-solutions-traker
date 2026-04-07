@@ -36,7 +36,7 @@ export default function TrackerApp() {
   useLexend();
   const { state: persistedState, loading, save, forceSave, refresh } = useTrackerPersistence();
   const isMobile = useIsMobileTracker();
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [allSubs, setAllSubs] = useState<Sub[][]>(() => getInitialData());
   const [allCollapsed, setAllCollapsed] = useState<Record<string, boolean>[]>([{}, {}, {}, {}]);
