@@ -894,12 +894,14 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
 
   const featureCount = sub.groups.reduce((c: number, g: any) => c + g.features.length, 0);
   const showSingleGroup = sub.groups.length === 1 && sub.groups[0].name === "general";
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(sub.name);
 
   return (
     <div style={{ marginBottom: 8 }}>
       {/* Sub header */}
       <div
-        draggable={!isMobile}
+        draggable={!isMobile && !editing}
         onDragStart={() => { dragRef.current = { type: "sub", subId: sub.id }; }}
         onDragOver={(e: React.DragEvent) => e.preventDefault()}
         onDrop={() => {
@@ -907,12 +909,12 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
             dispatch({ type: "DROP_S", tSId: sub.id, drag: dragRef.current });
           }
         }}
-        onClick={toggleOpen}
+        onClick={editing ? undefined : toggleOpen}
         style={{
           background: axis.subGradient,
           borderRadius: isMobile ? 10 : 12,
           padding: isMobile ? "12px 14px" : "16px 20px",
-          cursor: "pointer",
+          cursor: editing ? "default" : "pointer",
           display: "flex",
           alignItems: "center",
           gap: isMobile ? 8 : 12,
@@ -920,7 +922,26 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
         }}
       >
         {!isMobile && <span style={{ fontSize: 12, color: axis.subText, opacity: 0.5, cursor: "grab" }}>{"\u2807"}</span>}
-        <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, color: axis.subText, flex: 1, lineHeight: 1.3 }}>{sub.name}</span>
+        {editing ? (
+          <input
+            value={editName}
+            onChange={e => setEditName(e.target.value)}
+            onBlur={() => { dispatch({ type: "RS", subId: sub.id, name: editName.trim() || sub.name }); setEditing(false); }}
+            onKeyDown={e => {
+              if (e.key === "Enter") { dispatch({ type: "RS", subId: sub.id, name: editName.trim() || sub.name }); setEditing(false); }
+              if (e.key === "Escape") { setEditName(sub.name); setEditing(false); }
+            }}
+            onClick={e => e.stopPropagation()}
+            autoFocus
+            style={{
+              flex: 1, fontSize: isMobile ? 14 : 16, fontWeight: 700, color: axis.subText,
+              background: "transparent", border: "none", borderBottom: "1px solid " + axis.subText,
+              outline: "none", fontFamily: "Lexend, sans-serif",
+            }}
+          />
+        ) : (
+          <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, color: axis.subText, flex: 1, lineHeight: 1.3 }}>{sub.name}</span>
+        )}
         <span style={{
           background: axis.subCountBg, color: axis.subCountText,
           borderRadius: 999, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
@@ -928,6 +949,12 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
         }}>
           {featureCount} {isMobile ? "" : "solutions UX/GD"}
         </span>
+        <button
+          onClick={e => { e.stopPropagation(); setEditing(true); setEditName(sub.name); }}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.5, padding: 2, color: axis.subText, flexShrink: 0 }}
+        >
+          {"\u270F\uFE0F"}
+        </button>
         <button
           onClick={e => { e.stopPropagation(); setDeleteSubModal({ subId: sub.id, label: sub.name }); }}
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, opacity: 0.5, padding: "2px 4px", color: axis.subText, flexShrink: 0, lineHeight: 1 }}

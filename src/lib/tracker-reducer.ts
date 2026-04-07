@@ -126,6 +126,9 @@ export function trackerReducer(subs: Sub[], action: ReducerAction): Sub[] {
     case "DS": {
       return subs.filter(s => s.id !== action.subId);
     }
+    case "RS": {
+      return subs.map(s => s.id !== action.subId ? s : { ...s, name: action.name || s.name });
+    }
     case "AS": {
       const newSub: Sub = {
         id: "s-" + Date.now(),
