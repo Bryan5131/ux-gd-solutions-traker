@@ -434,6 +434,8 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNa
   tabNames: string[];
   onAddTab: () => void;
 }) {
+  const [burgerOpen, setBurgerOpen] = React.useState(false);
+
   const footerStyle: React.CSSProperties = {
     position: "fixed",
     bottom: 0,
@@ -454,95 +456,144 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNa
   };
 
   return (
-    <div style={footerStyle}>
-      {/* ALL button */}
-      <button
-        onClick={() => setActiveTab(-1)}
-        style={{
-          padding: isMobile ? "10px 12px" : "13px 16px",
-          fontSize: isMobile ? 10 : 11,
-          fontWeight: activeTab === -1 ? 700 : 500,
-          fontFamily: "Lexend, sans-serif",
-          background: activeTab === -1 ? (dark ? "#2a2926" : "#e8e7e2") : "transparent",
-          color: activeTab === -1 ? theme.text : theme.textSub,
-          border: "none",
-          cursor: "pointer",
-          borderTop: activeTab === -1 ? "3px solid " + theme.text : "3px solid transparent",
-          lineHeight: 1.4,
-          whiteSpace: "nowrap" as const,
-          flexShrink: 0,
-        }}
-      >
-        ALL
-      </button>
-      <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
-      {/* Tab buttons */}
-      {tabNames.map((name, i) => {
-        const axis = getAxisColors(i, dark);
-        const isActive = activeTab === i;
-        return (
-          <button
-            key={i}
-            onClick={() => setActiveTab(i)}
+    <>
+      {/* Burger menu panel */}
+      {burgerOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setBurgerOpen(false)}
             style={{
-              flex: isMobile ? undefined : 1,
-              padding: isMobile ? "10px 12px" : "13px 8px",
-              fontSize: isMobile ? 10 : 11,
-              fontWeight: isActive ? 700 : 400,
-              fontFamily: "Lexend, sans-serif",
-              background: isActive ? axis.accentLight : "transparent",
-              color: isActive ? axis.accent : axis.accent + "8C",
-              border: "none",
-              borderTop: isActive ? "3px solid " + axis.accent : "3px solid transparent",
-              cursor: "pointer",
-              lineHeight: 1.4,
-              whiteSpace: "nowrap" as const,
-              flexShrink: 0,
+              position: "fixed", inset: 0, zIndex: 1100,
             }}
-          >
-            {name}
-          </button>
-        );
-      })}
-      {/* Add tab button */}
-      <button
-        onClick={onAddTab}
-        title="Ajouter un onglet"
-        style={{
-          padding: isMobile ? "10px 10px" : "13px 14px",
-          fontSize: isMobile ? 14 : 16,
-          fontFamily: "Lexend, sans-serif",
-          background: "transparent",
-          color: theme.textSub,
-          border: "none",
-          cursor: "pointer",
-          fontWeight: 400,
-          whiteSpace: "nowrap" as const,
-          flexShrink: 0,
-          borderTop: "3px solid transparent",
-        }}
-      >
-        +
-      </button>
-      <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
-      <button
-        onClick={() => setDark(!dark)}
-        style={{
-          padding: isMobile ? "10px 12px" : "13px 16px",
-          fontSize: isMobile ? 11 : 13,
-          fontFamily: "Lexend, sans-serif",
-          background: "transparent",
-          color: theme.textSub,
-          border: "none",
-          cursor: "pointer",
-          fontWeight: 500,
-          whiteSpace: "nowrap" as const,
-          flexShrink: 0,
-        }}
-      >
-        {dark ? "Light" : "Dark"}
-      </button>
-    </div>
+          />
+          {/* Menu */}
+          <div style={{
+            position: "fixed",
+            bottom: isMobile ? 50 : 58,
+            right: 8,
+            zIndex: 1200,
+            background: theme.surface,
+            border: "1px solid " + theme.border,
+            borderRadius: 12,
+            boxShadow: dark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.15)",
+            minWidth: 180,
+            padding: "6px 0",
+            fontFamily: "Lexend, sans-serif",
+          }}>
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => { setDark(!dark); setBurgerOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                width: "100%", padding: "10px 16px",
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 13, color: theme.text, fontFamily: "Lexend, sans-serif",
+                textAlign: "left" as const,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{dark ? "☀️" : "🌙"}</span>
+              {dark ? "Mode clair" : "Mode sombre"}
+            </button>
+          </div>
+        </>
+      )}
+
+      <div style={footerStyle}>
+        {/* ALL button */}
+        <button
+          onClick={() => setActiveTab(-1)}
+          style={{
+            padding: isMobile ? "10px 12px" : "13px 16px",
+            fontSize: isMobile ? 10 : 11,
+            fontWeight: activeTab === -1 ? 700 : 500,
+            fontFamily: "Lexend, sans-serif",
+            background: activeTab === -1 ? (dark ? "#2a2926" : "#e8e7e2") : "transparent",
+            color: activeTab === -1 ? theme.text : theme.textSub,
+            border: "none",
+            cursor: "pointer",
+            borderTop: activeTab === -1 ? "3px solid " + theme.text : "3px solid transparent",
+            lineHeight: 1.4,
+            whiteSpace: "nowrap" as const,
+            flexShrink: 0,
+          }}
+        >
+          ALL
+        </button>
+        <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
+        {/* Tab buttons */}
+        {tabNames.map((name, i) => {
+          const axis = getAxisColors(i, dark);
+          const isActive = activeTab === i;
+          return (
+            <button
+              key={i}
+              onClick={() => setActiveTab(i)}
+              style={{
+                flex: isMobile ? undefined : 1,
+                padding: isMobile ? "10px 12px" : "13px 8px",
+                fontSize: isMobile ? 10 : 11,
+                fontWeight: isActive ? 700 : 400,
+                fontFamily: "Lexend, sans-serif",
+                background: isActive ? axis.accentLight : "transparent",
+                color: isActive ? axis.accent : axis.accent + "8C",
+                border: "none",
+                borderTop: isActive ? "3px solid " + axis.accent : "3px solid transparent",
+                cursor: "pointer",
+                lineHeight: 1.4,
+                whiteSpace: "nowrap" as const,
+                flexShrink: 0,
+              }}
+            >
+              {name}
+            </button>
+          );
+        })}
+        {/* Add tab button */}
+        <button
+          onClick={onAddTab}
+          title="Ajouter un onglet"
+          style={{
+            padding: isMobile ? "10px 10px" : "13px 14px",
+            fontSize: isMobile ? 14 : 16,
+            fontFamily: "Lexend, sans-serif",
+            background: "transparent",
+            color: theme.textSub,
+            border: "none",
+            cursor: "pointer",
+            fontWeight: 400,
+            whiteSpace: "nowrap" as const,
+            flexShrink: 0,
+            borderTop: "3px solid transparent",
+          }}
+        >
+          +
+        </button>
+        <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
+        {/* Burger button */}
+        <button
+          onClick={() => setBurgerOpen(o => !o)}
+          title="Menu"
+          style={{
+            padding: isMobile ? "10px 14px" : "13px 18px",
+            background: burgerOpen ? theme.surfaceAlt : "transparent",
+            border: "none",
+            cursor: "pointer",
+            flexShrink: 0,
+            borderTop: burgerOpen ? "3px solid " + theme.textSub : "3px solid transparent",
+            display: "flex",
+            flexDirection: "column" as const,
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span style={{ display: "block", width: 16, height: 2, background: theme.textSub, borderRadius: 2 }} />
+          <span style={{ display: "block", width: 16, height: 2, background: theme.textSub, borderRadius: 2 }} />
+          <span style={{ display: "block", width: 16, height: 2, background: theme.textSub, borderRadius: 2 }} />
+        </button>
+      </div>
+    </>
   );
 }
 
