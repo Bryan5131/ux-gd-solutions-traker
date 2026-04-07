@@ -40,6 +40,8 @@ export default function TrackerApp() {
   const [activeTab, setActiveTab] = useState(0);
   const [allSubs, setAllSubs] = useState<Sub[][]>(() => getInitialData());
   const [allCollapsed, setAllCollapsed] = useState<Record<string, boolean>[]>([{}, {}, {}, {}]);
+  const [tabNames, setTabNames] = useState<string[]>(() => [...TAB_NAMES]);
+  const [axeLabels, setAxeLabels] = useState<string[]>(() => [...AXE_LABELS]);
   const [tags, setTags] = useState<Tag[]>(() => getInitialTags());
   const [gidCounter, setGidCounter] = useState(1);
   const [initialized, setInitialized] = useState(false);
@@ -134,6 +136,30 @@ export default function TrackerApp() {
     setAllSubs(prev => prev.map(subs => trackerReducer(subs, { type: "REMOVE_TAG_GLOBAL", tagId })));
   }, []);
 
+  const addTab = useCallback(() => {
+    const newIndex = allSubs.length;
+    setAllSubs(prev => [...prev, []]);
+    setAllCollapsed(prev => [...prev, {}]);
+    setTabNames(prev => [...prev, `Nouvel onglet ${newIndex + 1}`]);
+    setActiveTab(newIndex);
+  }, [allSubs.length]);
+
+  const renameTab = useCallback((index: number, name: string) => {
+    setTabNames(prev => {
+      const copy = [...prev];
+      copy[index] = name;
+      return copy;
+    });
+  }, []);
+
+  const renameAxe = useCallback((axeIndex: number, name: string) => {
+    setAxeLabels(prev => {
+      const copy = [...prev];
+      copy[axeIndex] = name;
+      return copy;
+    });
+  }, []);
+
   const totalFeatures = useMemo(() => {
     let c = 0;
     allSubs.forEach(tab => tab.forEach(s => s.groups.forEach(g => { c += g.features.length; })));
@@ -193,7 +219,7 @@ export default function TrackerApp() {
         s.groups.forEach(g => {
           g.features.forEach(f => {
             const plainLabel = f.label.replace(/<[^>]*>/g, "");
-            rows.push([f.gid, TAB_NAMES[ti], s.name, g.name, plainLabel, f.macro, f.micro, f.note].join("\t"));
+            rows.push([f.gid, tabNames[ti] ?? TAB_NAMES[ti], s.name, g.name, plainLabel, f.macro, f.micro, f.note].join("\t"));
           });
         });
       });
@@ -257,6 +283,7 @@ export default function TrackerApp() {
         <TabContent
           key={activeTab}
           tabIndex={activeTab}
+          tabName={tabNames[activeTab] ?? TAB_NAMES[activeTab]}
           subs={allSubs[activeTab]}
           collapsed={allCollapsed[activeTab]}
           tags={tags}
@@ -287,6 +314,9 @@ export default function TrackerApp() {
           setTags={setTags}
           setDeleteModal={(info: any) => setDeleteModal(info ? { ...info, tabIndex: activeTab } : null)}
           isMobile={isMobile}
+          onRenameTab={(name: string) => renameTab(activeTab, name)}
+          axeLabel={axeLabels[TAB_AXES[activeTab]] ?? ""}
+          onRenameAxe={(name: string) => renameAxe(TAB_AXES[activeTab] ?? 0, name)}
         />
       )}
 
@@ -298,6 +328,8 @@ export default function TrackerApp() {
         setDark={setDark}
         theme={theme}
         isMobile={isMobile}
+        tabNames={tabNames}
+        onAddTab={addTab}
       />
 
       {/* Modals */}
@@ -353,13 +385,15 @@ export default function TrackerApp() {
 }
 
 // ─── Footer ───────────────────────────────────────────────────
-function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile }: {
+function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNames, onAddTab }: {
   activeTab: number;
   setActiveTab: (t: number) => void;
   dark: boolean;
   setDark: (d: boolean) => void;
   theme: any;
   isMobile: boolean;
+  tabNames: string[];
+  onAddTab: () => void;
 }) {
   const footerStyle: React.CSSProperties = {
     position: "fixed",
@@ -379,13 +413,6 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile }: {
       scrollbarWidth: "none" as any,
     } : {}),
   };
-
-  const tabColors = [
-    getAxisColors(0, dark).accent,
-    getAxisColors(1, dark).accent,
-    getAxisColors(2, dark).accent,
-    getAxisColors(3, dark).accent,
-  ];
 
   return (
     <div style={footerStyle}>
@@ -411,7 +438,7 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile }: {
       </button>
       <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
       {/* Tab buttons */}
-      {TAB_NAMES.map((name, i) => {
+      {tabNames.map((name, i) => {
         const axis = getAxisColors(i, dark);
         const isActive = activeTab === i;
         return (
@@ -438,6 +465,26 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile }: {
           </button>
         );
       })}
+      {/* Add tab button */}
+      <button
+        onClick={onAddTab}
+        title="Ajouter un onglet"
+        style={{
+          padding: isMobile ? "10px 10px" : "13px 14px",
+          fontSize: isMobile ? 14 : 16,
+          fontFamily: "Lexend, sans-serif",
+          background: "transparent",
+          color: theme.textSub,
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 400,
+          whiteSpace: "nowrap" as const,
+          flexShrink: 0,
+          borderTop: "3px solid transparent",
+        }}
+      >
+        +
+      </button>
       <div style={{ width: 1, background: theme.border, alignSelf: "stretch", flexShrink: 0 }} />
       <button
         onClick={() => setDark(!dark)}
@@ -461,29 +508,120 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile }: {
 }
 
 // ─── Tab Content ──────────────────────────────────────────────
-function TabContent({ tabIndex, subs, collapsed, tags, theme, dark, dispatch,
+function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dispatch,
   toggleCollapse, isOpen, toggleAllSections, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
   findFeatureByGid, getNextGid, setNewBesoinModal, onForceSave,
-  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, isMobile
+  onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, isMobile, onRenameTab,
+  axeLabel, onRenameAxe
 }: any) {
   const axis = getAxisColors(tabIndex, dark);
-  const axeLabel = AXE_LABELS[TAB_AXES[tabIndex]];
   const dragRef = useRef<any>({});
   const anyOpen = Object.values(collapsed).some((v: any) => v);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(tabName);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const [editingAxe, setEditingAxe] = useState(false);
+  const [axeValue, setAxeValue] = useState(axeLabel);
+  const axeInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingTitle) { titleInputRef.current?.select(); }
+  }, [editingTitle]);
+
+  useEffect(() => {
+    if (editingAxe) { axeInputRef.current?.select(); }
+  }, [editingAxe]);
+
+  const commitTitle = () => {
+    const trimmed = titleValue.trim();
+    if (trimmed) onRenameTab(trimmed);
+    setEditingTitle(false);
+  };
+
+  const commitAxe = () => {
+    const trimmed = axeValue.trim();
+    if (trimmed) onRenameAxe(trimmed);
+    setEditingAxe(false);
+  };
 
   return (
     <div style={{ maxWidth: 1800, margin: "0 auto", padding: isMobile ? "12px 8px" : "24px 16px" }}>
       {/* Page Header */}
       <div style={{ borderRadius: isMobile ? 14 : 20, overflow: "hidden", boxShadow: theme.shadowMd, marginBottom: isMobile ? "1.2rem" : "2.5rem" }}>
         <div style={{ background: axis.subGradient, padding: isMobile ? "10px 16px" : "14px 24px", textAlign: "center" as const }}>
-          <span style={{ fontSize: isMobile ? 10 : 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, opacity: 0.8, color: axis.subText }}>
-            {axeLabel}
-          </span>
+          {editingAxe ? (
+            <input
+              ref={axeInputRef}
+              value={axeValue}
+              onChange={e => setAxeValue(e.target.value)}
+              onBlur={commitAxe}
+              onKeyDown={e => {
+                if (e.key === "Enter") commitAxe();
+                if (e.key === "Escape") { setAxeValue(axeLabel); setEditingAxe(false); }
+              }}
+              style={{
+                fontSize: isMobile ? 10 : 12,
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase" as const,
+                fontFamily: "Lexend, sans-serif",
+                background: "transparent",
+                border: "none",
+                borderBottom: "1px solid " + axis.subText,
+                outline: "none",
+                color: axis.subText,
+                textAlign: "center",
+                width: "auto",
+                minWidth: 80,
+              }}
+            />
+          ) : (
+            <span
+              onDoubleClick={() => { setAxeValue(axeLabel); setEditingAxe(true); }}
+              title="Double-clic pour renommer"
+              style={{ fontSize: isMobile ? 10 : 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, opacity: 0.8, color: axis.subText, cursor: "text" }}
+            >
+              {axeLabel}
+            </span>
+          )}
         </div>
         <div style={{ background: theme.surface, padding: isMobile ? "1.2rem 1rem" : "2rem 2.5rem", textAlign: "center" as const, borderTop: "4px solid " + axis.accent }}>
-          <div style={{ fontSize: isMobile ? 22 : 36, fontWeight: 700, letterSpacing: "-0.03em", color: theme.text }}>{TAB_NAMES[tabIndex]}</div>
+          {editingTitle ? (
+            <input
+              ref={titleInputRef}
+              value={titleValue}
+              onChange={e => setTitleValue(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={e => {
+                if (e.key === "Enter") commitTitle();
+                if (e.key === "Escape") { setTitleValue(tabName); setEditingTitle(false); }
+              }}
+              style={{
+                fontSize: isMobile ? 22 : 36,
+                fontWeight: 700,
+                letterSpacing: "-0.03em",
+                color: theme.text,
+                fontFamily: "Lexend, sans-serif",
+                background: "transparent",
+                border: "none",
+                borderBottom: "2px solid " + axis.accent,
+                outline: "none",
+                textAlign: "center",
+                width: "100%",
+                maxWidth: 600,
+              }}
+            />
+          ) : (
+            <div
+              onDoubleClick={() => { setTitleValue(tabName); setEditingTitle(true); }}
+              title="Double-clic pour renommer"
+              style={{ fontSize: isMobile ? 22 : 36, fontWeight: 700, letterSpacing: "-0.03em", color: theme.text, cursor: "text", display: "inline-block" }}
+            >
+              {tabName}
+            </div>
+          )}
           <div style={{ fontSize: isMobile ? 11 : 13, color: theme.textMuted, marginTop: isMobile ? 4 : 8 }}>
             {"\uD83C\uDFAF"} Objectifs utilisateurs
           </div>
