@@ -1229,10 +1229,11 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
   setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
   return (
     <div style={{ padding: "4px 0" }}>
-      {group.features.filter(matchesFilters).map((f: Feature) => (
+      {group.features.filter(matchesFilters).map((f: Feature, idx: number) => (
         <FeatureRow
           key={f.id}
           feature={f}
+          rowIndex={idx}
           sub={sub}
           group={group}
           axis={axis}
@@ -1265,7 +1266,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
 }
 
 // ─── Feature Row ──────────────────────────────────────────────
-function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
+function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, dispatch,
   showNotes, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
 
   const [editing, setEditing] = useState(false);
@@ -1276,9 +1277,10 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
 
   const macroBadge = getMacroBadgeColors(f.macro, dark);
   const microBadge = getMicroBadgeColors(f.micro, dark);
+  const isOdd = (rowIndex ?? 0) % 2 === 1;
   const rowBg = f.macro !== "none"
     ? macroBadge.bg + "CC"
-    : theme.surface;
+    : isOdd ? theme.surfaceAlt : theme.surface;
 
   const badgeStyle = (colors: any): React.CSSProperties => ({
     borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
@@ -1348,7 +1350,7 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
   // ─── MOBILE CARD LAYOUT ─────────────────────────────
   if (isMobile) {
     return (
-      <div style={{ marginBottom: 2 }}>
+      <div style={{ marginBottom: 5 }}>
         <div
           onClick={() => setEditing(true)}
           style={{
@@ -1422,7 +1424,7 @@ function FeatureRow({ feature, sub, group, axis, theme, dark, tags, dispatch,
 
   // ─── DESKTOP ROW LAYOUT ─────────────────────────────
   return (
-    <div style={{ marginBottom: 1 }}>
+    <div style={{ marginBottom: 4 }}>
       <div
         draggable
         onDragStart={() => { dragRef.current = { type: "feature", subId: sub.id, gId: group.id, fId: f.id }; }}

@@ -94,13 +94,13 @@ export function getMacroBadgeColors(status: string, isDark: boolean) {
       ? { bg: "#252420", border: "#3d3b34", text: "#9e9a91" }
       : { bg: "#f0efe9", border: "#d4d1c5", text: "#6b6860" },
     outdated: isDark
-      ? { bg: "#2a2926", border: "#5c5950", text: "#c8c5bc" }
+      ? { bg: "#494846", border: "#5c5950", text: "#c8c5bc" }
       : { bg: "#e8e7e2", border: "#a8a59e", text: "#4a4840" },
     kill: isDark
-      ? { bg: "#2d1414", border: "#7a2020", text: "#f4a0a0" }
+      ? { bg: "#3d1818", border: "#7a2020", text: "#f4a0a0" }
       : { bg: "#fde8e8", border: "#f4a0a0", text: "#9b2020" },
     horsmvp: isDark
-      ? { bg: "#2a1e00", border: "#7a5a00", text: "#f5cc6a" }
+      ? { bg: "#332606", border: "#7a5a00", text: "#f5cc6a" }
       : { bg: "#fef3dc", border: "#f5cc6a", text: "#7a5a00" }
   };
   return map[status] || map.none;
