@@ -1281,6 +1281,7 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
   const rowBg = f.macro !== "none"
     ? macroBadge.bg + "CC"
     : isOdd ? theme.surfaceAlt : theme.surface;
+  const microBorderLeft = f.micro !== "none" ? "3px solid " + microBadge.border : "3px solid transparent";
 
   const badgeStyle = (colors: any): React.CSSProperties => ({
     borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
@@ -1357,6 +1358,7 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
             padding: "10px 12px",
             background: rowBg,
             borderRadius: showNote ? "10px 10px 0 0" : 10,
+            borderLeft: microBorderLeft,
             cursor: "default",
           }}
         >
@@ -1441,6 +1443,7 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           gap: 8,
           background: rowBg,
           borderRadius: showNote ? "10px 10px 0 0" : 10,
+          borderLeft: microBorderLeft,
           cursor: "default",
         }}
       >
