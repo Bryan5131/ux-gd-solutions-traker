@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 const STORAGE_KEY = "ux-tracker-auth";
 const SITE_PASSWORD = import.meta.env.VITE_SITE_PASSWORD || "uxtracker2025";
@@ -6,6 +7,7 @@ const SITE_PASSWORD = import.meta.env.VITE_SITE_PASSWORD || "uxtracker2025";
 const PasswordGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [input, setInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -59,25 +61,46 @@ const PasswordGate: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         <div style={{ fontSize: 13, color: "#9e9a91" }}>
           Entrez le mot de passe pour accéder au site
         </div>
-        <input
-          type="password"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Mot de passe"
-          autoFocus
-          style={{
-            width: "100%",
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: error ? "1.5px solid #ef4444" : "1px solid #3d3b34",
-            background: "#252420",
-            color: "#f0ede6",
-            fontSize: 15,
-            fontFamily: "Lexend, sans-serif",
-            outline: "none",
-            transition: "border 0.2s",
-          }}
-        />
+        <div style={{ position: "relative", width: "100%" }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Mot de passe"
+            autoFocus
+            style={{
+              width: "100%",
+              padding: "10px 40px 10px 14px",
+              borderRadius: 8,
+              border: error ? "1.5px solid #ef4444" : "1px solid #3d3b34",
+              background: "#252420",
+              color: "#f0ede6",
+              fontSize: 15,
+              fontFamily: "Lexend, sans-serif",
+              outline: "none",
+              transition: "border 0.2s",
+              boxSizing: "border-box",
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{
+              position: "absolute",
+              right: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#9e9a91",
+              padding: 0,
+              display: "flex",
+            }}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         {error && (
           <div style={{ fontSize: 12, color: "#ef4444", marginTop: -12 }}>
             Mot de passe incorrect
