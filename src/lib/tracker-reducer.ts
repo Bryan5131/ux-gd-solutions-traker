@@ -47,7 +47,8 @@ export function trackerReducer(subs: Sub[], action: ReducerAction): Sub[] {
               micro: "none",
               label: action.label || "",
               note: action.note || "",
-              tags: []
+              tags: [],
+              ...(action.mirrorGid !== undefined && { mirrorGid: action.mirrorGid }),
             };
             return { ...g, features: [...g.features, newFeat] };
           })
@@ -244,7 +245,7 @@ export function nextMacro(current: string): string {
 }
 
 export function nextMicro(current: string): string {
-  const order = ["none", "doing", "done"];
+  const order = ["none", "new", "doing", "done"];
   const idx = order.indexOf(current);
   return order[(idx + 1) % order.length];
 }

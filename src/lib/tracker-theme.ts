@@ -84,6 +84,7 @@ export const macroStatuses = {
 
 export const microStatuses = {
   none: { label: "None", icon: "\u00B7" },
+  new: { label: "New", icon: "\u2605" },
   doing: { label: "Doing", icon: "\u25B7" },
   done: { label: "Done", icon: "\u2713" }
 };
@@ -111,6 +112,9 @@ export function getMicroBadgeColors(status: string, isDark: boolean) {
     none: isDark
       ? { bg: "#252420", border: "#3d3b34", text: "#9e9a91" }
       : { bg: "#f0efe9", border: "#d4d1c5", text: "#6b6860" },
+    new: isDark
+      ? { bg: "#2a1a3a", border: "#6a3a9a", text: "#c49af5" }
+      : { bg: "#f3eaff", border: "#c49af5", text: "#6a3a9a" },
     doing: isDark
       ? { bg: "#0d1e33", border: "#1a4a80", text: "#80b8f0" }
       : { bg: "#ddeeff", border: "#80b8f0", text: "#1a4a80" },

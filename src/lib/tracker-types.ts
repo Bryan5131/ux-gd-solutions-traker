@@ -6,6 +6,7 @@ export interface Feature {
   label: string;
   note: string;
   tags: string[];
+  mirrorGid?: number;
 }
 
 export interface Group {
@@ -56,7 +57,7 @@ export interface AxisColors {
 }
 
 export type MacroStatus = "none" | "outdated" | "kill" | "horsmvp";
-export type MicroStatus = "none" | "doing" | "done";
+export type MicroStatus = "none" | "new" | "doing" | "done";
 
 export interface ReducerAction {
   type: string;
@@ -74,5 +75,6 @@ export interface ReducerAction {
   tSId?: string;
   drag?: any;
   newGid?: number;
+  mirrorGid?: number;
   feat?: Feature;
 }

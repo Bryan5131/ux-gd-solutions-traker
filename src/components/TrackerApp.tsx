@@ -102,6 +102,12 @@ export default function TrackerApp() {
     return null;
   }, [allSubs]);
 
+  const dispatchMirrorEdit = useCallback((mirrorGid: number, type: string, field?: string, val?: any, tagId?: string) => {
+    const found = findFeatureByGid(mirrorGid);
+    if (!found) return;
+    dispatch(found.tabIndex, { type, subId: found.subId, gId: found.gId, fId: found.feature.id, field, val, tagId });
+  }, [findFeatureByGid, dispatch]);
+
   // Filter state
   const [search, setSearch] = useState("");
   const [macroFilter, setMacroFilter] = useState("all");
@@ -293,6 +299,8 @@ export default function TrackerApp() {
           setShowNotes={setShowNotes}
           matchesFilters={matchesFilters}
           dispatch={dispatch}
+          findFeatureByGid={findFeatureByGid}
+          dispatchMirrorEdit={dispatchMirrorEdit}
           totalFeatures={totalFeatures}
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
@@ -324,6 +332,7 @@ export default function TrackerApp() {
           setShowNotes={setShowNotes}
           matchesFilters={matchesFilters}
           findFeatureByGid={findFeatureByGid}
+          dispatchMirrorEdit={dispatchMirrorEdit}
           getNextGid={getNextGid}
           setNewBesoinModal={setNewBesoinModal}
           onForceSave={handleForceSave}
@@ -636,7 +645,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
   toggleCollapse, isOpen, toggleAllSections, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
-  findFeatureByGid, getNextGid, setNewBesoinModal, onForceSave,
+  findFeatureByGid, dispatchMirrorEdit, getNextGid, setNewBesoinModal, onForceSave,
   onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile, onRenameTab,
   axeLabel, onRenameAxe
 }: any) {
@@ -789,6 +798,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
           matchesFilters={matchesFilters}
           showNotes={showNotes}
           findFeatureByGid={findFeatureByGid}
+          dispatchMirrorEdit={dispatchMirrorEdit}
           getNextGid={getNextGid}
           dragRef={dragRef}
           removeTagGlobal={removeTagGlobal}
@@ -996,7 +1006,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
 // ─── Sub Section ──────────────────────────────────────────────
 function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen,
   collapsed, toggleCollapse, isGroupOpen, toggleGroupOpen, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile }: any) {
+  showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile }: any) {
 
   const featureCount = sub.groups.reduce((c: number, g: any) => c + g.features.length, 0);
   const showSingleGroup = sub.groups.length === 1 && sub.groups[0].name === "general";
@@ -1091,6 +1101,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
               matchesFilters={matchesFilters}
               showNotes={showNotes}
               findFeatureByGid={findFeatureByGid}
+              dispatchMirrorEdit={dispatchMirrorEdit}
               getNextGid={getNextGid}
               dragRef={dragRef}
               removeTagGlobal={removeTagGlobal}
@@ -1116,6 +1127,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
                 matchesFilters={matchesFilters}
                 showNotes={showNotes}
                 findFeatureByGid={findFeatureByGid}
+                dispatchMirrorEdit={dispatchMirrorEdit}
                 getNextGid={getNextGid}
                 dragRef={dragRef}
                 removeTagGlobal={removeTagGlobal}
@@ -1136,7 +1148,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
 
 // ─── Group Section ────────────────────────────────────────────
 function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
-  dispatch, matchesFilters, showNotes, findFeatureByGid, getNextGid, dragRef,
+  dispatch, matchesFilters, showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef,
   removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
 
   const [editing, setEditing] = useState(false);
@@ -1213,6 +1225,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
           sub={sub} group={group} axis={axis} theme={theme} dark={dark}
           tags={tags} dispatch={dispatch} matchesFilters={matchesFilters}
           showNotes={showNotes} findFeatureByGid={findFeatureByGid}
+          dispatchMirrorEdit={dispatchMirrorEdit}
           getNextGid={getNextGid} dragRef={dragRef}
           removeTagGlobal={removeTagGlobal} setTags={setTags}
           setDeleteModal={setDeleteModal} setMoveFeatModal={setMoveFeatModal} tabIndex={tabIndex}
@@ -1225,7 +1238,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
 
 // ─── Group Features (shared between single-group and multi-group) ──
 function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, getNextGid, dragRef, removeTagGlobal, setTags,
+  showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags,
   setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
   return (
     <div style={{ padding: "4px 0" }}>
@@ -1242,6 +1255,8 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
           tags={tags}
           dispatch={dispatch}
           showNotes={showNotes}
+          findFeatureByGid={findFeatureByGid}
+          dispatchMirrorEdit={dispatchMirrorEdit}
           dragRef={dragRef}
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
@@ -1267,13 +1282,30 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
 
 // ─── Feature Row ──────────────────────────────────────────────
 function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, dispatch,
-  showNotes, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
+  showNotes, findFeatureByGid, dispatchMirrorEdit, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
+
+  // Resolve mirror source if this is a mirror card
+  const isMirror = feature.mirrorGid !== undefined;
+  const mirrorSource = isMirror && findFeatureByGid ? findFeatureByGid(feature.mirrorGid) : null;
+  // f = the data to display (source if mirror, own data otherwise)
+  const f = mirrorSource ? mirrorSource.feature : feature;
+
+  // Dispatch for edits: redirect to source if mirror
+  const dispatchEdit = (type: string, field?: string, val?: any, tagId?: string) => {
+    if (isMirror && dispatchMirrorEdit) {
+      dispatchMirrorEdit(feature.mirrorGid, type, field, val, tagId);
+    } else {
+      dispatch({ type, subId: sub.id, gId: group.id, fId: feature.id, field, val, tagId });
+    }
+  };
 
   const [editing, setEditing] = useState(false);
-  const [editLabel, setEditLabel] = useState(feature.label);
-  const [editNote, setEditNote] = useState(feature.note);
+  const [editLabel, setEditLabel] = useState(f.label);
+  const [editNote, setEditNote] = useState(f.note);
   const [noteVisible, setNoteVisible] = useState(false);
-  const f = feature;
+
+  // Keep edit state in sync with source data (for mirrors)
+  useEffect(() => { if (!editing) { setEditLabel(f.label); setEditNote(f.note); } }, [f.label, f.note, editing]);
 
   const macroBadge = getMacroBadgeColors(f.macro, dark);
   const microBadge = getMicroBadgeColors(f.micro, dark);
@@ -1292,10 +1324,28 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
 
   const showNote = (showNotes || noteVisible) && f.note;
 
+  // For TagArea: wrap dispatch so tag toggles go to source if mirror
+  const tagDispatch = isMirror && dispatchMirrorEdit
+    ? (action: any) => {
+        if (action.type === "TT") {
+          dispatchMirrorEdit(feature.mirrorGid, "TT", undefined, undefined, action.tagId);
+        } else {
+          dispatch(action);
+        }
+      }
+    : dispatch;
+  // For TagArea, pass source feature's id/sub/group if mirror
+  const tagFeature = mirrorSource ? mirrorSource.feature : feature;
+  const tagSub = mirrorSource ? { id: mirrorSource.subId } : sub;
+  const tagGroup = mirrorSource ? { id: mirrorSource.gId } : group;
+
   if (editing) {
     return (
       <div style={{ padding: isMobile ? "10px 12px" : "11px 16px", background: theme.surfaceAlt, borderRadius: 8, marginBottom: 2 }}>
-        <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4 }}>#{f.id}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: theme.textMuted }}>#{f.gid}</span>
+          {isMirror && <span style={{ fontSize: 10, color: "#a855f7", fontWeight: 600, opacity: 0.8 }}>{"\u21C6"} miroir</span>}
+        </div>
         <input
           value={editLabel}
           onChange={e => setEditLabel(e.target.value)}
@@ -1331,8 +1381,8 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           </button>
           <button
             onClick={() => {
-              dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "label", val: editLabel });
-              dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "note", val: editNote });
+              dispatchEdit("UF", "label", editLabel);
+              dispatchEdit("UF", "note", editNote);
               setEditing(false);
             }}
             style={{
@@ -1358,13 +1408,14 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
             padding: "10px 12px",
             background: rowBg,
             borderRadius: showNote ? "10px 10px 0 0" : 10,
-            borderLeft: microBorderLeft,
+            borderLeft: isMirror ? "3px solid #a855f7" : microBorderLeft,
             cursor: "default",
           }}
         >
           {/* Top row: GID + label */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
             <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, flexShrink: 0, marginTop: 2 }}>#{f.gid}</span>
+            {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0, marginTop: 2 }}>{"\u21C6"}</span>}
             {f.note && (
               <button
                 onClick={(e) => { e.stopPropagation(); setNoteVisible(!noteVisible); }}
@@ -1381,7 +1432,7 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
               dangerouslySetInnerHTML={{ __html: f.label }}
             />
             <button
-              onClick={(e) => { e.stopPropagation(); setDeleteModal({ subId: sub.id, gId: group.id, fId: f.id, label: f.label }); }}
+              onClick={(e) => { e.stopPropagation(); setDeleteModal({ subId: sub.id, gId: group.id, fId: feature.id, label: f.label }); }}
               style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.3, padding: 0, color: theme.textMuted, flexShrink: 0 }}
             >
               {"\u00D7"}
@@ -1390,22 +1441,22 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           {/* Bottom row: badges + tags */}
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, alignItems: "center" }}>
             <button
-              onClick={(e) => { e.stopPropagation(); dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "macro", val: nextMacro(f.macro) }); }}
+              onClick={(e) => { e.stopPropagation(); dispatchEdit("UF", "macro", nextMacro(f.macro)); }}
               style={badgeStyle(macroBadge)}
             >
               <span style={{ fontSize: 9 }}>{(macroStatuses as any)[f.macro]?.icon}</span>
               {(macroStatuses as any)[f.macro]?.label}
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "micro", val: nextMicro(f.micro) }); }}
+              onClick={(e) => { e.stopPropagation(); dispatchEdit("UF", "micro", nextMicro(f.micro)); }}
               style={badgeStyle(microBadge)}
             >
               <span style={{ fontSize: 9 }}>{(microStatuses as any)[f.micro]?.icon}</span>
               {(microStatuses as any)[f.micro]?.label}
             </button>
             <TagArea
-              feature={f} sub={sub} group={group} tags={tags}
-              theme={theme} dark={dark} dispatch={dispatch}
+              feature={tagFeature} sub={tagSub} group={tagGroup} tags={tags}
+              theme={theme} dark={dark} dispatch={tagDispatch}
               removeTagGlobal={removeTagGlobal} setTags={setTags}
               isMobile={isMobile}
             />
@@ -1429,11 +1480,11 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
     <div style={{ marginBottom: 4 }}>
       <div
         draggable
-        onDragStart={() => { dragRef.current = { type: "feature", subId: sub.id, gId: group.id, fId: f.id }; }}
+        onDragStart={() => { dragRef.current = { type: "feature", subId: sub.id, gId: group.id, fId: feature.id }; }}
         onDragOver={(e: React.DragEvent) => e.preventDefault()}
         onDrop={() => {
           if (dragRef.current?.type === "feature") {
-            dispatch({ type: "DROP_F", subId: sub.id, gId: group.id, tFId: f.id, drag: dragRef.current });
+            dispatch({ type: "DROP_F", subId: sub.id, gId: group.id, tFId: feature.id, drag: dragRef.current });
           }
         }}
         style={{
@@ -1443,12 +1494,13 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           gap: 8,
           background: rowBg,
           borderRadius: showNote ? "10px 10px 0 0" : 10,
-          borderLeft: microBorderLeft,
+          borderLeft: isMirror ? "3px solid #a855f7" : microBorderLeft,
           cursor: "default",
         }}
       >
         <span style={{ fontSize: 12, color: theme.textMuted, cursor: "grab", flexShrink: 0 }}>{"\u2807"}</span>
         <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, minWidth: 30, flexShrink: 0 }}>#{f.gid}</span>
+        {isMirror && <span style={{ fontSize: 10, color: "#a855f7", fontWeight: 700, flexShrink: 0 }} title={"Miroir de #" + feature.mirrorGid}>{"\u21C6"}</span>}
         <div style={{ width: 22, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {f.note && (
             <button
@@ -1467,27 +1519,27 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           dangerouslySetInnerHTML={{ __html: f.label }}
         />
         <TagArea
-          feature={f} sub={sub} group={group} tags={tags}
-          theme={theme} dark={dark} dispatch={dispatch}
+          feature={tagFeature} sub={tagSub} group={tagGroup} tags={tags}
+          theme={theme} dark={dark} dispatch={tagDispatch}
           removeTagGlobal={removeTagGlobal} setTags={setTags}
           isMobile={false}
         />
         <button
-          onClick={() => dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "macro", val: nextMacro(f.macro) })}
+          onClick={() => dispatchEdit("UF", "macro", nextMacro(f.macro))}
           style={badgeStyle(macroBadge)}
         >
           <span style={{ fontSize: 10 }}>{(macroStatuses as any)[f.macro]?.icon}</span>
           {(macroStatuses as any)[f.macro]?.label}
         </button>
         <button
-          onClick={() => dispatch({ type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "micro", val: nextMicro(f.micro) })}
+          onClick={() => dispatchEdit("UF", "micro", nextMicro(f.micro))}
           style={badgeStyle(microBadge)}
         >
           <span style={{ fontSize: 10 }}>{(microStatuses as any)[f.micro]?.icon}</span>
           {(microStatuses as any)[f.micro]?.label}
         </button>
         <button
-          onClick={() => setMoveFeatModal({ subId: sub.id, gId: group.id, feature: f })}
+          onClick={() => setMoveFeatModal({ subId: sub.id, gId: group.id, feature: feature })}
           title="Déplacer vers..."
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.4, padding: "2px 4px", color: theme.textMuted }}
         >
@@ -1500,7 +1552,7 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           {"\u270F\uFE0F"}
         </button>
         <button
-          onClick={() => setDeleteModal({ subId: sub.id, gId: group.id, fId: f.id, label: f.label })}
+          onClick={() => setDeleteModal({ subId: sub.id, gId: group.id, fId: feature.id, label: f.label })}
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.3, padding: "2px 4px", color: theme.textMuted }}
         >
           {"\u00D7"}
@@ -1677,7 +1729,7 @@ function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, g
       const gid = parseInt(label.trim().slice(1));
       const found = findFeatureByGid(gid);
       if (found) {
-        dispatch({ type: "AF", subId: sub.id, gId: group.id, label: found.feature.label, note: found.feature.note, newGid: getNextGid() });
+        dispatch({ type: "AF", subId: sub.id, gId: group.id, label: "", note: "", newGid: getNextGid(), mirrorGid: gid });
         setLabel("");
         setNote("");
         setError("");
@@ -1716,7 +1768,7 @@ function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, g
             value={label}
             onChange={e => { setLabel(e.target.value); setError(""); }}
             onKeyDown={e => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") setOpen(false); }}
-            placeholder={isMobile ? "Nom ou #42 pour dupliquer" : "Nom de la solution, ou #42 pour dupliquer"}
+            placeholder={isMobile ? "Nom ou #42 pour miroir" : "Nom de la solution, ou #42 pour créer un miroir"}
             autoFocus
             style={{
               width: "100%", padding: "7px 12px", borderRadius: 8,
@@ -1732,7 +1784,7 @@ function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, g
               position: "absolute" as const, right: 12, top: "50%", transform: "translateY(-50%)",
               fontSize: 10, color: theme.noteText, opacity: 0.7,
             }}>
-              {"\u2192"} dupliquer
+              {"\u21C6"} miroir
             </span>
           )}
         </div>
@@ -1839,7 +1891,7 @@ function AddGroupButton({ sub, dispatch, theme }: any) {
 function AllView({ allSubs, tags, theme, dark, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
-  dispatch, totalFeatures, removeTagGlobal, setTags, isMobile }: any) {
+  dispatch, findFeatureByGid, dispatchMirrorEdit, totalFeatures, removeTagGlobal, setTags, isMobile }: any) {
 
   // Collect all features with metadata
   const allFeatures: { f: Feature; tabIndex: number; subName: string; groupName: string; sub: Sub; group: any }[] = [];
@@ -1928,9 +1980,26 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
       {/* Feature rows */}
       {filtered.map(item => {
         const axis = getAxisColors(item.tabIndex, dark);
-        const macroBadge = getMacroBadgeColors(item.f.macro, dark);
-        const microBadge = getMicroBadgeColors(item.f.micro, dark);
-        const showNote = showNotes && item.f.note;
+        // Mirror resolution for AllView
+        const isMirror = item.f.mirrorGid !== undefined;
+        const mirrorSrc = isMirror && findFeatureByGid ? findFeatureByGid(item.f.mirrorGid) : null;
+        const displayF = mirrorSrc ? mirrorSrc.feature : item.f;
+        const dispatchForItem = (type: string, field?: string, val?: any, tagId?: string) => {
+          if (isMirror && dispatchMirrorEdit) {
+            dispatchMirrorEdit(item.f.mirrorGid, type, field, val, tagId);
+          } else {
+            dispatch(item.tabIndex, { type, subId: item.sub.id, gId: item.group.id, fId: item.f.id, field, val, tagId });
+          }
+        };
+        const tagFeatureAllView = mirrorSrc ? mirrorSrc.feature : item.f;
+        const tagSubAllView = mirrorSrc ? { id: mirrorSrc.subId } : item.sub;
+        const tagGroupAllView = mirrorSrc ? { id: mirrorSrc.gId } : item.group;
+        const tagDispatchAllView = isMirror && dispatchMirrorEdit
+          ? (action: any) => { if (action.type === "TT") dispatchMirrorEdit(item.f.mirrorGid, "TT", undefined, undefined, action.tagId); else dispatch(item.tabIndex, action); }
+          : (action: ReducerAction) => dispatch(item.tabIndex, action);
+        const macroBadge = getMacroBadgeColors(displayF.macro, dark);
+        const microBadge = getMicroBadgeColors(displayF.micro, dark);
+        const showNote = showNotes && displayF.note;
 
         const badgeStyle = (colors: any): React.CSSProperties => ({
           borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
@@ -1944,8 +2013,9 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
             <div key={item.tabIndex + "-" + item.f.gid} style={{ marginBottom: 2 }}>
               <div style={{
                 padding: "10px 12px",
-                background: item.f.macro !== "none" ? macroBadge.bg + "CC" : theme.surface,
+                background: displayF.macro !== "none" ? macroBadge.bg + "CC" : theme.surface,
                 borderRadius: showNote ? "10px 10px 0 0" : 10,
+                borderLeft: isMirror ? "3px solid #a855f7" : "3px solid transparent",
               }}>
                 {/* Top: breadcrumb + label */}
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
@@ -1954,42 +2024,37 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
                     border: "1px solid " + axis.accent + "44", color: axis.accent,
                     borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginTop: 2,
                   }}>
-                    #{item.f.gid}
+                    #{displayF.gid}
                   </span>
+                  {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0, marginTop: 2 }}>{"\u21C6"}</span>}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 9, color: theme.textMuted, marginBottom: 2 }}>
                       <span style={{ color: axis.accent, fontWeight: 600 }}>{item.subName}</span>
                       {item.groupName !== "general" && <span>{" \u203A "}{item.groupName}</span>}
                     </div>
-                    <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: item.f.label }} />
+                    <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: displayF.label }} />
                   </div>
                 </div>
                 {/* Bottom: badges */}
                 <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, alignItems: "center" }}>
                   <button
-                    onClick={() => dispatch(item.tabIndex, {
-                      type: "UF", subId: item.sub.id, gId: item.group.id,
-                      fId: item.f.id, field: "macro", val: nextMacro(item.f.macro)
-                    })}
+                    onClick={() => dispatchForItem("UF", "macro", nextMacro(displayF.macro))}
                     style={badgeStyle(macroBadge)}
                   >
-                    <span style={{ fontSize: 9 }}>{(macroStatuses as any)[item.f.macro]?.icon}</span>
-                    {(macroStatuses as any)[item.f.macro]?.label}
+                    <span style={{ fontSize: 9 }}>{(macroStatuses as any)[displayF.macro]?.icon}</span>
+                    {(macroStatuses as any)[displayF.macro]?.label}
                   </button>
                   <button
-                    onClick={() => dispatch(item.tabIndex, {
-                      type: "UF", subId: item.sub.id, gId: item.group.id,
-                      fId: item.f.id, field: "micro", val: nextMicro(item.f.micro)
-                    })}
+                    onClick={() => dispatchForItem("UF", "micro", nextMicro(displayF.micro))}
                     style={badgeStyle(microBadge)}
                   >
-                    <span style={{ fontSize: 9 }}>{(microStatuses as any)[item.f.micro]?.icon}</span>
-                    {(microStatuses as any)[item.f.micro]?.label}
+                    <span style={{ fontSize: 9 }}>{(microStatuses as any)[displayF.micro]?.icon}</span>
+                    {(microStatuses as any)[displayF.micro]?.label}
                   </button>
                   <TagArea
-                    feature={item.f} sub={item.sub} group={item.group}
+                    feature={tagFeatureAllView} sub={tagSubAllView} group={tagGroupAllView}
                     tags={tags} theme={theme} dark={dark}
-                    dispatch={(action: ReducerAction) => dispatch(item.tabIndex, action)}
+                    dispatch={tagDispatchAllView}
                     removeTagGlobal={removeTagGlobal} setTags={setTags}
                     isMobile={true}
                   />
@@ -2001,7 +2066,7 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
                   background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder,
                   borderRadius: "0 0 10px 10px",
                 }}>
-                  <span style={{ fontSize: 11, color: theme.noteText, lineHeight: 1.7 }}>{item.f.note}</span>
+                  <span style={{ fontSize: 11, color: theme.noteText, lineHeight: 1.7 }}>{displayF.note}</span>
                 </div>
               )}
             </div>
@@ -2013,8 +2078,9 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
           <div key={item.tabIndex + "-" + item.f.gid} style={{ marginBottom: 1 }}>
             <div style={{
               display: "flex", alignItems: "center", padding: "11px 16px", gap: 8,
-              background: item.f.macro !== "none" ? macroBadge.bg + "CC" : theme.surface,
+              background: displayF.macro !== "none" ? macroBadge.bg + "CC" : theme.surface,
               borderRadius: showNote ? "10px 10px 0 0" : 10,
+              borderLeft: isMirror ? "3px solid #a855f7" : "none",
             }}>
               {/* GID pill */}
               <span style={{
@@ -2022,11 +2088,12 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
                 border: "1px solid " + axis.accent + "44", color: axis.accent,
                 borderRadius: 6, padding: "2px 6px", minWidth: 30, textAlign: "center" as const, flexShrink: 0,
               }}>
-                #{item.f.gid}
+                #{displayF.gid}
               </span>
+              {isMirror && <span style={{ fontSize: 10, color: "#a855f7", fontWeight: 700, flexShrink: 0 }} title={"Miroir de #" + item.f.mirrorGid}>{"\u21C6"}</span>}
               {/* Note col */}
               <div style={{ width: 22, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {item.f.note && <span style={{ fontSize: 12, opacity: showNotes ? 1 : 0.3 }}>{"\uD83D\uDCDD"}</span>}
+                {displayF.note && <span style={{ fontSize: 12, opacity: showNotes ? 1 : 0.3 }}>{"\uD83D\uDCDD"}</span>}
               </div>
               {/* Breadcrumb + label */}
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -2034,42 +2101,36 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
                   <span style={{ color: axis.accent, fontWeight: 600 }}>{item.subName}</span>
                   {item.groupName !== "general" && <span>{" \u203A "}{item.groupName}</span>}
                 </div>
-                <span style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: item.f.label }} />
+                <span style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: displayF.label }} />
               </div>
               {/* Tags */}
               <TagArea
-                feature={item.f}
-                sub={item.sub}
-                group={item.group}
+                feature={tagFeatureAllView}
+                sub={tagSubAllView}
+                group={tagGroupAllView}
                 tags={tags}
                 theme={theme}
                 dark={dark}
-                dispatch={(action: ReducerAction) => dispatch(item.tabIndex, action)}
+                dispatch={tagDispatchAllView}
                 removeTagGlobal={removeTagGlobal}
                 setTags={setTags}
                 isMobile={false}
               />
               {/* Macro */}
               <button
-                onClick={() => dispatch(item.tabIndex, {
-                  type: "UF", subId: item.sub.id, gId: item.group.id,
-                  fId: item.f.id, field: "macro", val: nextMacro(item.f.macro)
-                })}
+                onClick={() => dispatchForItem("UF", "macro", nextMacro(displayF.macro))}
                 style={badgeStyle(macroBadge)}
               >
-                <span style={{ fontSize: 10 }}>{(macroStatuses as any)[item.f.macro]?.icon}</span>
-                {(macroStatuses as any)[item.f.macro]?.label}
+                <span style={{ fontSize: 10 }}>{(macroStatuses as any)[displayF.macro]?.icon}</span>
+                {(macroStatuses as any)[displayF.macro]?.label}
               </button>
               {/* Micro */}
               <button
-                onClick={() => dispatch(item.tabIndex, {
-                  type: "UF", subId: item.sub.id, gId: item.group.id,
-                  fId: item.f.id, field: "micro", val: nextMicro(item.f.micro)
-                })}
+                onClick={() => dispatchForItem("UF", "micro", nextMicro(displayF.micro))}
                 style={badgeStyle(microBadge)}
               >
-                <span style={{ fontSize: 10 }}>{(microStatuses as any)[item.f.micro]?.icon}</span>
-                {(microStatuses as any)[item.f.micro]?.label}
+                <span style={{ fontSize: 10 }}>{(microStatuses as any)[displayF.micro]?.icon}</span>
+                {(microStatuses as any)[displayF.micro]?.label}
               </button>
             </div>
             {showNote && (
@@ -2078,7 +2139,7 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
                 background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder,
                 borderRadius: "0 0 10px 10px",
               }}>
-                <span style={{ fontSize: 12, color: theme.noteText, lineHeight: 1.7 }}>{item.f.note}</span>
+                <span style={{ fontSize: 12, color: theme.noteText, lineHeight: 1.7 }}>{displayF.note}</span>
               </div>
             )}
           </div>
