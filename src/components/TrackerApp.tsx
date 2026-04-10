@@ -280,6 +280,7 @@ export default function TrackerApp() {
           theme={theme}
           dark={dark}
           isMobile={isMobile}
+          onQuit={() => setShowBrouillon(false)}
         />
       ) : activeTab === -1 ? (
         <AllView
@@ -2209,12 +2210,13 @@ function ModalBackdrop({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Brouillon View ───────────────────────────────────────────
-function BrouillonView({ text, setText, theme, dark, isMobile }: {
+function BrouillonView({ text, setText, theme, dark, isMobile, onQuit }: {
   text: string;
   setText: (v: string) => void;
   theme: any;
   dark: boolean;
   isMobile: boolean;
+  onQuit: () => void;
 }) {
   const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
   const charCount = text.length;
@@ -2241,15 +2243,15 @@ function BrouillonView({ text, setText, theme, dark, isMobile }: {
             </div>
           </div>
           <button
-            onClick={() => setText("")}
-            title="Effacer"
+            onClick={onQuit}
+            title="Quitter (Échap)"
             style={{
               background: "none", border: "1px solid " + theme.border,
               borderRadius: 8, padding: "6px 12px", cursor: "pointer",
               fontSize: 11, color: theme.textMuted, fontFamily: "Lexend, sans-serif",
             }}
           >
-            Effacer
+            Quitter
           </button>
         </div>
 
@@ -2257,6 +2259,7 @@ function BrouillonView({ text, setText, theme, dark, isMobile }: {
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === "Escape") onQuit(); }}
           placeholder="Colle ou note du texte ici..."
           autoFocus
           style={{
