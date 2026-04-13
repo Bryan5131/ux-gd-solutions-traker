@@ -2600,126 +2600,85 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
           {(allSubs as Sub[][]).map((tab, ti) => {
             const axis = getAxisColors(ti, dark);
             const tabLabel = (tabNames as string[])[ti] ?? ("Tab " + (ti + 1));
-            const subsWithContent = tab.map((sub: Sub) => {
-              const groupsWithContent = sub.groups.map((g: any) => {
-                const feats = g.features.filter(matchesFilters);
-                return { group: g, feats };
-              }).filter(({ feats }: any) => feats.length > 0);
-              return { sub, groupsWithContent };
-            }).filter(({ groupsWithContent }: any) => groupsWithContent.length > 0);
-            if (subsWithContent.length === 0) return null;
+            const tabKey = "tab|" + ti;
+            const tabCollapsed = collapsed.has(tabKey);
+            if (tab.length === 0) return null;
             return (
               <div key={ti} style={{ marginBottom: isMobile ? 24 : 36 }}>
                 {/* Tab header */}
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  marginBottom: isMobile ? 12 : 16,
-                  paddingBottom: isMobile ? 8 : 10,
-                  borderBottom: "2px solid " + axis.accent,
-                }}>
-                  <span style={{
-                    fontSize: isMobile ? 11 : 12, fontWeight: 700, letterSpacing: "0.08em",
-                    textTransform: "uppercase" as const, color: axis.accent,
-                    background: axis.accentLight, borderRadius: 6,
-                    padding: isMobile ? "3px 8px" : "4px 10px",
-                  }}>
-                    {tabLabel}
-                  </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: isMobile ? 12 : 16, paddingBottom: isMobile ? 8 : 10, borderBottom: "2px solid " + axis.accent }}>
+                  <button onClick={() => toggleCollapseKey(tabKey)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: axis.accent, fontSize: 11, transition: "transform 0.15s", transform: tabCollapsed ? "rotate(-90deg)" : "rotate(0deg)", flexShrink: 0 }}>{"▾"}</button>
+                  {editingKey === tabKey ? (
+                    <input autoFocus value={editingValue} onChange={e => setEditingValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") commitEdit(tabKey); if (e.key === "Escape") setEditingKey(null); }}
+                      onBlur={() => commitEdit(tabKey)}
+                      style={{ fontSize: isMobile ? 11 : 12, fontWeight: 700, letterSpacing: "0.08em", background: axis.accentLight, border: "1px solid " + axis.accent, borderRadius: 6, color: axis.accent, padding: "3px 10px", outline: "none", fontFamily: "Lexend, sans-serif" }} />
+                  ) : (
+                    <span onClick={() => { setEditingKey(tabKey); setEditingValue(tabLabel); }}
+                      style={{ fontSize: isMobile ? 11 : 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: axis.accent, background: axis.accentLight, borderRadius: 6, padding: isMobile ? "3px 8px" : "4px 10px", cursor: "text" }}
+                      title="Cliquer pour renommer">
+                      {tabLabel}
+                    </span>
+                  )}
                 </div>
-
-                {subsWithContent.map(({ sub, groupsWithContent }: any) => (
-                  <div key={sub.id} style={{ marginBottom: isMobile ? 16 : 24 }}>
-                    {/* Sub header */}
-                    <div style={{
-                      fontSize: isMobile ? 13 : 15, fontWeight: 600, color: axis.accentText,
-                      marginBottom: isMobile ? 6 : 10,
-                      paddingLeft: isMobile ? 8 : 12,
-                      borderLeft: "3px solid " + axis.accent,
-                    }}>
-                      {sub.name}
-                    </div>
-
-                    {groupsWithContent.map(({ group, feats }: any) => (
-                      <div key={group.id} style={{ marginBottom: isMobile ? 10 : 14 }}>
-                        {/* Group header (skip if "general") */}
-                        {group.name !== "general" && (
-                          <div style={{
-                            fontSize: isMobile ? 10 : 11, fontWeight: 600, color: axis.accent,
-                            opacity: 0.7, marginBottom: 4,
-                            paddingLeft: isMobile ? 20 : 24,
-                            textTransform: "uppercase" as const, letterSpacing: "0.06em",
-                          }}>
-                            {group.name}
-                          </div>
+                {!tabCollapsed && tab.map((sub: Sub) => {
+                  const subKey = "sub|" + ti + "|" + sub.id;
+                  const subCollapsed = collapsed.has(subKey);
+                  return (
+                    <div key={sub.id} style={{ marginBottom: isMobile ? 16 : 24 }}>
+                      {/* Sub header */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: isMobile ? 6 : 10, paddingLeft: isMobile ? 6 : 8, borderLeft: "3px solid " + axis.accent }}>
+                        <button onClick={() => toggleCollapseKey(subKey)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: axis.accent, fontSize: 11, transition: "transform 0.15s", transform: subCollapsed ? "rotate(-90deg)" : "rotate(0deg)", flexShrink: 0 }}>{"▾"}</button>
+                        {editingKey === subKey ? (
+                          <input autoFocus value={editingValue} onChange={e => setEditingValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") commitEdit(subKey); if (e.key === "Escape") setEditingKey(null); }}
+                            onBlur={() => commitEdit(subKey)}
+                            style={{ fontSize: isMobile ? 13 : 15, fontWeight: 600, background: theme.surfaceAlt, border: "1px solid " + theme.border, borderRadius: 4, color: theme.text, padding: "2px 6px", outline: "none", fontFamily: "Lexend, sans-serif" }} />
+                        ) : (
+                          <span onClick={() => { setEditingKey(subKey); setEditingValue(sub.name); }}
+                            style={{ fontSize: isMobile ? 13 : 15, fontWeight: 600, color: axis.accentText, cursor: "text" }}
+                            title="Cliquer pour renommer">
+                            {sub.name}
+                          </span>
                         )}
-                        {/* Features */}
-                        <div style={{ paddingLeft: isMobile ? 12 : 16 }}>
-                          {feats.map((f: Feature, idx: number) => {
-                            const isMirror = f.mirrorGid !== undefined;
-                            const mirrorSrc = isMirror && findFeatureByGid ? findFeatureByGid(f.mirrorGid) : null;
-                            const displayF = mirrorSrc ? mirrorSrc.feature : f;
-                            const dispatchForItem = (type: string, field?: string, val?: any, tagId?: string) => {
-                              if (isMirror && dispatchMirrorEdit) dispatchMirrorEdit(f.mirrorGid, type, field, val, tagId);
-                              else dispatch(ti, { type, subId: sub.id, gId: group.id, fId: f.id, field, val, tagId });
-                            };
-                            const tagFeat = mirrorSrc ? mirrorSrc.feature : f;
-                            const tagSub = mirrorSrc ? { id: mirrorSrc.subId } : sub;
-                            const tagGrp = mirrorSrc ? { id: mirrorSrc.gId } : group;
-                            const tagDisp = isMirror && dispatchMirrorEdit
-                              ? (action: any) => { if (action.type === "TT") dispatchMirrorEdit(f.mirrorGid, "TT", undefined, undefined, action.tagId); else dispatch(ti, action); }
-                              : (action: ReducerAction) => dispatch(ti, action);
-                            const macroBadge = getMacroBadgeColors(displayF.macro, dark);
-                            const microBadge = getMicroBadgeColors(displayF.micro, dark);
-                            const showNote = showNotes && displayF.note;
-                            const badgeStyle = (colors: any): React.CSSProperties => ({
-                              borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px",
-                              fontSize: isMobile ? 10 : 11, fontWeight: 600,
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              background: colors.bg, border: "1px solid " + colors.border,
-                              color: colors.text, cursor: "pointer", fontFamily: "Lexend, sans-serif",
-                            });
-                            const isOdd = idx % 2 === 1;
-                            return (
-                              <div key={f.id} style={{ marginBottom: 2 }}>
-                                <div style={{
-                                  display: "flex", alignItems: "center", padding: isMobile ? "9px 12px" : "10px 14px", gap: 8,
-                                  background: displayF.macro !== "none" ? macroBadge.bg + "CC" : isOdd ? theme.surfaceAlt : theme.surface,
-                                  borderRadius: showNote ? "8px 8px 0 0" : 8,
-                                  borderLeft: isMirror ? "3px solid #a855f7" : "3px solid transparent",
-                                }}>
-                                  <span style={{
-                                    fontSize: 9, fontWeight: 700, color: axis.accent,
-                                    background: axis.accent + "15", borderRadius: 4,
-                                    padding: "1px 5px", flexShrink: 0,
-                                  }}>#{displayF.gid}</span>
-                                  {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0 }}>{"\u21C6"}</span>}
-                                  <div style={{ width: 18, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    {displayF.note && <span style={{ fontSize: 11, opacity: showNotes ? 1 : 0.3 }}>{"\uD83D\uDCDD"}</span>}
-                                  </div>
-                                  <span style={{ flex: 1, fontSize: isMobile ? 12 : 13, lineHeight: 1.5, minWidth: 0 }} dangerouslySetInnerHTML={{ __html: displayF.label }} />
-                                  <TagArea feature={tagFeat} sub={tagSub} group={tagGrp} tags={tags} theme={theme} dark={dark} dispatch={tagDisp} removeTagGlobal={removeTagGlobal} setTags={setTags} isMobile={isMobile} />
-                                  <button onClick={() => dispatchForItem("UF", "macro", nextMacro(displayF.macro))} style={badgeStyle(macroBadge)}>
-                                    <span style={{ fontSize: 9 }}>{(macroStatuses as any)[displayF.macro]?.icon}</span>
-                                    {(macroStatuses as any)[displayF.macro]?.label}
-                                  </button>
-                                  <button onClick={() => dispatchForItem("UF", "micro", nextMicro(displayF.micro))} style={badgeStyle(microBadge)}>
-                                    <span style={{ fontSize: 9 }}>{(microStatuses as any)[displayF.micro]?.icon}</span>
-                                    {(microStatuses as any)[displayF.micro]?.label}
-                                  </button>
-                                </div>
-                                {showNote && (
-                                  <div style={{ padding: "6px 14px 10px 14px", background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder, borderRadius: "0 0 8px 8px" }}>
-                                    <span style={{ fontSize: 11, color: theme.noteText, lineHeight: 1.7 }}>{displayF.note}</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      {!subCollapsed && sub.groups.map((g: any) => {
+                        const grpKey = "grp|" + ti + "|" + sub.id + "|" + g.id;
+                        const grpCollapsed = collapsed.has(grpKey);
+                        const feats = g.features.filter(matchesFilters);
+                        return (
+                          <div key={g.id} style={{ marginBottom: isMobile ? 10 : 14, paddingLeft: isMobile ? 12 : 16 }}>
+                            {/* Group header */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                              <button onClick={() => toggleCollapseKey(grpKey)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: axis.accent, fontSize: 10, opacity: 0.7, transition: "transform 0.15s", transform: grpCollapsed ? "rotate(-90deg)" : "rotate(0deg)", flexShrink: 0 }}>{"▾"}</button>
+                              {editingKey === grpKey ? (
+                                <input autoFocus value={editingValue} onChange={e => setEditingValue(e.target.value)}
+                                  onKeyDown={e => { if (e.key === "Enter") commitEdit(grpKey); if (e.key === "Escape") setEditingKey(null); }}
+                                  onBlur={() => commitEdit(grpKey)}
+                                  style={{ fontSize: isMobile ? 10 : 11, fontWeight: 600, background: theme.surfaceAlt, border: "1px solid " + theme.border, borderRadius: 4, color: axis.accent, padding: "1px 5px", outline: "none", fontFamily: "Lexend, sans-serif" }} />
+                              ) : (
+                                <span onClick={() => { setEditingKey(grpKey); setEditingValue(g.name); }}
+                                  style={{ fontSize: isMobile ? 10 : 11, fontWeight: 600, color: axis.accent, opacity: 0.7, textTransform: "uppercase" as const, letterSpacing: "0.06em", cursor: "text" }}
+                                  title="Cliquer pour renommer">
+                                  {g.name}
+                                </span>
+                              )}
+                              <span style={{ fontSize: 10, color: theme.textMuted, opacity: 0.5 }}>({feats.length})</span>
+                            </div>
+                            {!grpCollapsed && (
+                              <div>
+                                {feats.map((f: Feature, idx: number) => renderCard(f, ti, sub, g, idx))}
+                                <AddFeatureForm sub={sub} group={g} theme={theme} axis={axis}
+                                  dispatch={(action: ReducerAction) => dispatch(ti, action)}
+                                  findFeatureByGid={findFeatureByGid} getNextGid={getNextGid} isMobile={isMobile} />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
