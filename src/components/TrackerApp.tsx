@@ -2585,18 +2585,12 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
             <option value="all">☰ Tous</option>
             <option value="structured">⊞ Structuré</option>
           </select>
-          <button
-            onClick={() => setShowNotes(!showNotes)}
-            style={{
-              ...ctrl,
-              background: showNotes ? "#e6faf4" : theme.surface,
-              color: showNotes ? "#005540" : theme.text,
-              borderColor: showNotes ? "#00c48c" : theme.border,
-              fontWeight: showNotes ? 600 : 400,
-            }}
-          >
+          <button onClick={() => setShowNotes(!showNotes)} style={{ ...ctrl, background: showNotes ? "#e6faf4" : theme.surface, color: showNotes ? "#005540" : theme.text, borderColor: showNotes ? "#00c48c" : theme.border, fontWeight: showNotes ? 600 : 400 }}>
             {"\uD83D\uDCDD"} Notes
           </button>
+          <button onClick={onForceSave} style={ctrl} disabled={saveStatus === "saving"} title="Sauvegarder">{"\uD83D\uDCBE"}</button>
+          <button onClick={onRefresh} style={ctrl} disabled={saveStatus === "refreshing"} title="Actualiser">{"\uD83D\uDD04"}</button>
+          {statusLabel && <span style={{ fontSize: 10, color: saveStatus === "error" ? "#ef4444" : "#00c48c", fontWeight: 500 }}>{statusLabel}</span>}
         </div>
       )}
 
