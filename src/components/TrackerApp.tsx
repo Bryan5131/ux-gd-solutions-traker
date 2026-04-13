@@ -2320,7 +2320,29 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
     }
   }, [macroFilter, microFilter, tagFilter]);
 
-  // Collect all features with metadata
+  // Close action menu on outside click
+  useEffect(() => {
+    if (!openActionKey) return;
+    const handler = (e: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) setOpenActionKey(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openActionKey]);
+
+  const toggleCollapseKey = (key: string) => setCollapsed(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const toggleNoteKey = (key: string) => setVisibleNotes(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+  const commitEdit = (key: string) => {
+    const val = editingValue.trim();
+    setEditingKey(null);
+    if (!val) return;
+    if (key.startsWith("tab|")) { renameTab(parseInt(key.split("|")[1]), val); }
+    else if (key.startsWith("sub|")) { const [,ti,subId] = key.split("|"); dispatch(parseInt(ti), { type: "RS", subId, name: val }); }
+    else if (key.startsWith("grp|")) { const [,ti,subId,gId] = key.split("|"); dispatch(parseInt(ti), { type: "RG", subId, gId, name: val }); }
+  };
+
+  // Collect all features
   const allFeatures: { f: Feature; tabIndex: number; subName: string; groupName: string; sub: Sub; group: any }[] = [];
   allSubs.forEach((tab: Sub[], ti: number) => {
     tab.forEach((s: Sub) => {
