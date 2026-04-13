@@ -120,6 +120,7 @@ export default function TrackerApp() {
   type SelEntry = { tabIndex: number; subId: string; gId: string; fId: number; gid: number; feature: any };
   const [selMap, setSelMap] = useState<Map<number, SelEntry>>(new Map());
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkTagOpen, setBulkTagOpen] = useState(false);
   const toggleSelectFeature = useCallback((gid: number, entry: SelEntry) => {
     setSelMap(prev => {
       const next = new Map(prev);
@@ -289,52 +290,104 @@ export default function TrackerApp() {
   return (
     <div style={containerStyle}>
       {selMap.size > 0 && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 10000,
-          background: "#1a3a2a", borderBottom: "2px solid #00c48c",
-          padding: "10px 20px", display: "flex", alignItems: "center", gap: 12,
-          fontFamily: "Lexend, sans-serif",
-        }}>
-          <span style={{ fontSize: 13, color: "#00c48c", fontWeight: 600 }}>
-            {selMap.size} sélectionnée{selMap.size > 1 ? "s" : ""}
-          </span>
-          <div style={{ flex: 1 }} />
-          <button
-            onClick={() => {
-              selMap.forEach(({ tabIndex, subId, gId, fId }) => {
-                dispatch(tabIndex, { type: "DF", subId, gId, fId });
-              });
-              clearSelection();
-            }}
-            style={{
-              padding: "6px 14px", borderRadius: 8, border: "1px solid #ef4444",
-              background: "transparent", color: "#ef4444", fontSize: 12,
-              cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: 600,
-            }}
-          >
-            {"\uD83D\uDDD1"} Supprimer
-          </button>
-          <button
-            onClick={() => setBulkMoveOpen(true)}
-            style={{
-              padding: "6px 14px", borderRadius: 8, border: "none",
-              background: "#00c48c", color: "#003d2e", fontSize: 12,
-              cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: 600,
-            }}
-          >
-            {"\u21AA"} Déplacer
-          </button>
-          <button
-            onClick={clearSelection}
-            style={{
-              padding: "6px 10px", borderRadius: 8, border: "1px solid #3d3b34",
-              background: "transparent", color: "#9e9a91", fontSize: 12,
-              cursor: "pointer", fontFamily: "Lexend, sans-serif",
-            }}
-          >
-            {"\u00D7"} Annuler
-          </button>
-        </div>
+        <>
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, zIndex: 10000,
+            background: "#1a3a2a", borderBottom: "2px solid #00c48c",
+            padding: "10px 20px", display: "flex", alignItems: "center", gap: 12,
+            fontFamily: "Lexend, sans-serif",
+          }}>
+            <span style={{ fontSize: 13, color: "#00c48c", fontWeight: 600 }}>
+              {selMap.size} sélectionnée{selMap.size > 1 ? "s" : ""}
+            </span>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={() => {
+                selMap.forEach(({ tabIndex, subId, gId, fId }) => {
+                  dispatch(tabIndex, { type: "DF", subId, gId, fId });
+                });
+                clearSelection();
+              }}
+              style={{
+                padding: "6px 14px", borderRadius: 8, border: "1px solid #ef4444",
+                background: "transparent", color: "#ef4444", fontSize: 12,
+                cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: 600,
+              }}
+            >
+              {"\uD83D\uDDD1"} Supprimer
+            </button>
+            <button
+              onClick={() => { setBulkMoveOpen(true); setBulkTagOpen(false); }}
+              style={{
+                padding: "6px 14px", borderRadius: 8, border: "none",
+                background: "#00c48c", color: "#003d2e", fontSize: 12,
+                cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: 600,
+              }}
+            >
+              {"\u21AA"} Déplacer
+            </button>
+            <button
+              onClick={() => setBulkTagOpen(o => !o)}
+              style={{
+                padding: "6px 14px", borderRadius: 8, border: bulkTagOpen ? "none" : "1px solid #00c48c55",
+                background: bulkTagOpen ? "#00c48c" : "transparent",
+                color: bulkTagOpen ? "#003d2e" : "#00c48c", fontSize: 12,
+                cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: 600,
+              }}
+            >
+              {"\uD83C\uDFF7"} Tag
+            </button>
+            <button
+              onClick={() => { clearSelection(); setBulkTagOpen(false); }}
+              style={{
+                padding: "6px 10px", borderRadius: 8, border: "1px solid #3d3b34",
+                background: "transparent", color: "#9e9a91", fontSize: 12,
+                cursor: "pointer", fontFamily: "Lexend, sans-serif",
+              }}
+            >
+              {"\u00D7"} Annuler
+            </button>
+          </div>
+          {bulkTagOpen && (
+            <div style={{
+              position: "fixed", top: 46, left: "50%", transform: "translateX(-50%)",
+              zIndex: 10001, background: theme.surface, border: "1px solid #00c48c55",
+              borderRadius: 10, padding: 8, minWidth: 220, boxShadow: theme.shadowMd,
+              maxHeight: 300, overflowY: "auto" as const, fontFamily: "Lexend, sans-serif",
+            }}>
+              <div style={{ fontSize: 10, color: "#00c48c", fontWeight: 600, padding: "2px 6px 6px", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                Ajouter un tag aux {selMap.size} cartes
+              </div>
+              {tags.map((t: Tag) => {
+                const allHaveIt = [...selMap.values()].every(({ feature }) => feature.tags.includes(t.id));
+                const someHaveIt = [...selMap.values()].some(({ feature }) => feature.tags.includes(t.id));
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      selMap.forEach(({ tabIndex, subId, gId, fId, feature }) => {
+                        if (!feature.tags.includes(t.id)) {
+                          dispatch(tabIndex, { type: "TT", subId, gId, fId, tagId: t.id });
+                        }
+                      });
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "6px 8px", borderRadius: 6, cursor: "pointer", fontSize: 12,
+                      background: allHaveIt ? t.color + "22" : "transparent",
+                      color: theme.text,
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{t.label}</span>
+                    {allHaveIt && <span style={{ color: t.color, fontSize: 10, fontWeight: 700 }}>{"\u2713"} toutes</span>}
+                    {!allHaveIt && someHaveIt && <span style={{ color: theme.textMuted, fontSize: 10 }}>partielle</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
       {bulkMoveOpen && selMap.size > 0 && (
         <BulkMoveModal
