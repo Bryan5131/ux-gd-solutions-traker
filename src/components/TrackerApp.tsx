@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Sub, Tag, Feature, ReducerAction } from "../lib/tracker-types";
+import { Sub, Tag, Feature, ReducerAction, TrashItem } from "../lib/tracker-types";
 import {
   lightTheme, darkTheme, getAxisColors, macroStatuses, microStatuses,
   getMacroBadgeColors, getMicroBadgeColors, TAG_PALETTE
@@ -47,6 +47,8 @@ export default function TrackerApp() {
   const [initialized, setInitialized] = useState(false);
   const [showBrouillon, setShowBrouillon] = useState(false);
   const [brouillonText, setBrouillonText] = useState("");
+  const [trash, setTrash] = useState<TrashItem[]>([]);
+  const [showTrash, setShowTrash] = useState(false);
 
   // Sync from persisted state once loaded
   useEffect(() => {
@@ -57,6 +59,7 @@ export default function TrackerApp() {
       setTabNames(persistedState.tabNames);
       setAxeLabels(persistedState.axeLabels);
       setBrouillonText(persistedState.brouillon ?? "");
+      setTrash(persistedState.trash ?? []);
       setInitialized(true);
     }
   }, [persistedState, initialized]);
@@ -72,8 +75,8 @@ export default function TrackerApp() {
       saveTrigger.current = true;
       return;
     }
-    save({ subs: allSubs, tags, gidCounter, tabNames, axeLabels, brouillon: brouillonText });
-  }, [allSubs, tags, gidCounter, tabNames, axeLabels, brouillonText, initialized, save]);
+    save({ subs: allSubs, tags, gidCounter, tabNames, axeLabels, brouillon: brouillonText, trash });
+  }, [allSubs, tags, gidCounter, tabNames, axeLabels, brouillonText, trash, initialized, save]);
 
   const getNextGid = useCallback(() => {
     const g = gidCounter;
@@ -107,6 +110,44 @@ export default function TrackerApp() {
     if (!found) return;
     dispatch(found.tabIndex, { type, subId: found.subId, gId: found.gId, fId: found.feature.id, field, val, tagId });
   }, [findFeatureByGid, dispatch]);
+
+  const moveToTrash = useCallback((tabIndex: number, subId: string, gId: string, fId: number) => {
+    const sub = allSubs[tabIndex]?.find(s => s.id === subId);
+    const group = sub?.groups.find(g => g.id === gId);
+    const feature = group?.features.find(f => f.id === fId);
+    if (!feature || !sub || !group) return;
+    const item: TrashItem = {
+      id: "trash-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+      feature,
+      tabIndex,
+      subId,
+      subName: sub.name,
+      gId,
+      groupName: group.name,
+      deletedAt: Date.now(),
+    };
+    setTrash(prev => [item, ...prev]);
+    dispatch(tabIndex, { type: "DF", subId, gId, fId });
+  }, [allSubs, dispatch]);
+
+  const restoreFromTrash = useCallback((item: TrashItem) => {
+    const sub = allSubs[item.tabIndex]?.find(s => s.id === item.subId);
+    const group = sub?.groups.find(g => g.id === item.gId);
+    if (sub && group) {
+      dispatch(item.tabIndex, { type: "INSERT_F", subId: item.subId, gId: item.gId, feat: item.feature });
+    } else {
+      const fallbackSub = allSubs[item.tabIndex]?.[0];
+      const fallbackGroup = fallbackSub?.groups[0];
+      if (fallbackSub && fallbackGroup) {
+        dispatch(item.tabIndex, { type: "INSERT_F", subId: fallbackSub.id, gId: fallbackGroup.id, feat: item.feature });
+      }
+    }
+    setTrash(prev => prev.filter(t => t.id !== item.id));
+  }, [allSubs, dispatch]);
+
+  const permanentDeleteFromTrash = useCallback((trashId: string) => {
+    setTrash(prev => prev.filter(t => t.id !== trashId));
+  }, []);
 
   // Filter state
   const [search, setSearch] = useState("");
@@ -304,7 +345,7 @@ export default function TrackerApp() {
             <button
               onClick={() => {
                 selMap.forEach(({ tabIndex, subId, gId, fId }) => {
-                  dispatch(tabIndex, { type: "DF", subId, gId, fId });
+                  moveToTrash(tabIndex, subId, gId, fId);
                 });
                 clearSelection();
               }}
@@ -407,7 +448,20 @@ export default function TrackerApp() {
           }}
         />
       )}
-      {showBrouillon ? (
+      {showTrash ? (
+        <TrashView
+          trash={trash}
+          theme={theme}
+          dark={dark}
+          isMobile={isMobile}
+          tabNames={tabNames}
+          tags={tags}
+          onRestore={restoreFromTrash}
+          onDelete={permanentDeleteFromTrash}
+          onEmptyTrash={() => setTrash([])}
+          onQuit={() => setShowTrash(false)}
+        />
+      ) : showBrouillon ? (
         <BrouillonView
           text={brouillonText}
           setText={setBrouillonText}
@@ -492,9 +546,12 @@ export default function TrackerApp() {
       {/* Footer */}
       <Footer
         activeTab={activeTab}
-        setActiveTab={(t) => { setShowBrouillon(false); setActiveTab(t); }}
+        setActiveTab={(t) => { setShowBrouillon(false); setShowTrash(false); setActiveTab(t); }}
         showBrouillon={showBrouillon}
-        setShowBrouillon={setShowBrouillon}
+        setShowBrouillon={(v: boolean) => { setShowTrash(false); setShowBrouillon(v); }}
+        showTrash={showTrash}
+        setShowTrash={(v: boolean) => { setShowBrouillon(false); setShowTrash(v); }}
+        trashCount={trash.length}
         dark={dark}
         setDark={setDark}
         theme={theme}
@@ -511,12 +568,7 @@ export default function TrackerApp() {
           isMobile={isMobile}
           onCancel={() => setDeleteModal(null)}
           onConfirm={() => {
-            dispatch(deleteModal.tabIndex, {
-              type: "DF",
-              subId: deleteModal.subId,
-              gId: deleteModal.gId,
-              fId: deleteModal.fId
-            });
+            moveToTrash(deleteModal.tabIndex, deleteModal.subId, deleteModal.gId, deleteModal.fId);
             setDeleteModal(null);
           }}
         />
@@ -587,7 +639,7 @@ export default function TrackerApp() {
 }
 
 // ─── Footer ───────────────────────────────────────────────────
-function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNames, onAddTab, showBrouillon, setShowBrouillon }: {
+function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNames, onAddTab, showBrouillon, setShowBrouillon, showTrash, setShowTrash, trashCount }: {
   activeTab: number;
   setActiveTab: (t: number) => void;
   dark: boolean;
@@ -598,6 +650,9 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNa
   onAddTab: () => void;
   showBrouillon: boolean;
   setShowBrouillon: (v: boolean) => void;
+  showTrash: boolean;
+  setShowTrash: (v: boolean) => void;
+  trashCount: number;
 }) {
   const [burgerOpen, setBurgerOpen] = React.useState(false);
 
@@ -660,6 +715,34 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNa
             >
               <span style={{ fontSize: 16 }}>📝</span>
               Brouillon
+            </button>
+            {/* Trash */}
+            <button
+              onClick={() => { setShowTrash(!showTrash); setBurgerOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                width: "100%", padding: "10px 16px",
+                background: showTrash ? theme.surfaceAlt : "none",
+                border: "none", cursor: "pointer",
+                fontSize: 13, color: theme.text, fontFamily: "Lexend, sans-serif",
+                textAlign: "left" as const,
+              }}
+            >
+              <span style={{ fontSize: 16, position: "relative" as const }}>
+                🗑
+                {trashCount > 0 && (
+                  <span style={{
+                    position: "absolute" as const, top: -4, right: -6,
+                    background: "#ef4444", color: "#fff",
+                    borderRadius: 999, fontSize: 9, fontWeight: 700,
+                    padding: "0px 3px", lineHeight: "14px", minWidth: 14,
+                    display: "inline-block", textAlign: "center" as const,
+                  }}>
+                    {trashCount}
+                  </span>
+                )}
+              </span>
+              Corbeille{trashCount > 0 ? ` (${trashCount})` : ""}
             </button>
             {/* Separator */}
             <div style={{ height: 1, background: theme.border, margin: "4px 0" }} />
@@ -2511,6 +2594,115 @@ function ModalBackdrop({ children }: { children: React.ReactNode }) {
       padding: 16,
     }}>
       {children}
+    </div>
+  );
+}
+
+// ─── Trash View ───────────────────────────────────────────────
+function TrashView({ trash, theme, dark, isMobile, tabNames, tags, onRestore, onDelete, onEmptyTrash, onQuit }: any) {
+  const fmt = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const btnBase: React.CSSProperties = {
+    borderRadius: 8, fontSize: 12, cursor: "pointer",
+    fontFamily: "Lexend, sans-serif", fontWeight: 600,
+    padding: "5px 12px", border: "none",
+  };
+
+  return (
+    <div style={{
+      position: "fixed" as const, inset: 0, zIndex: 900,
+      background: theme.bg, fontFamily: "Lexend, sans-serif",
+      display: "flex", flexDirection: "column" as const,
+      paddingBottom: isMobile ? 56 : 64,
+    }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12,
+        padding: isMobile ? "12px 16px" : "16px 24px",
+        borderBottom: "1px solid " + theme.border,
+        background: theme.surface, flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 20 }}>🗑</span>
+        <span style={{ fontSize: isMobile ? 15 : 17, fontWeight: 700, color: theme.text, flex: 1 }}>Corbeille</span>
+        {trash.length > 0 && (
+          <button
+            onClick={onEmptyTrash}
+            style={{ ...btnBase, background: "#ef444422", color: "#ef4444", border: "1px solid #ef444444" }}
+          >
+            Vider la corbeille
+          </button>
+        )}
+        <button
+          onClick={onQuit}
+          style={{ ...btnBase, background: theme.surfaceAlt, color: theme.textSub, padding: "5px 10px" }}
+        >
+          {"\u00D7"} Fermer
+        </button>
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: "auto" as const, padding: isMobile ? "12px 8px" : "20px 24px" }}>
+        {trash.length === 0 ? (
+          <div style={{ textAlign: "center" as const, marginTop: 60, color: theme.textMuted, fontSize: 14 }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🗑</div>
+            La corbeille est vide
+          </div>
+        ) : (
+          <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", flexDirection: "column" as const, gap: 8 }}>
+            {(trash as TrashItem[]).map(item => {
+              const tabName = tabNames[item.tabIndex] ?? "Tab " + item.tabIndex;
+              const activeTags = (tags as Tag[]).filter(t => item.feature.tags.includes(t.id));
+              return (
+                <div key={item.id} style={{
+                  background: theme.surface,
+                  border: "1px solid " + theme.border,
+                  borderRadius: 10, padding: isMobile ? "10px 12px" : "12px 16px",
+                  display: "flex", alignItems: "flex-start", gap: 12,
+                }}>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 600, color: theme.textSub }}>{tabName}</span>
+                      {" › "}{item.subName}
+                      {item.groupName !== "general" && <>{" › "}{item.groupName}</>}
+                    </div>
+                    <div style={{ fontSize: 13, color: theme.text, fontWeight: 500, marginBottom: 4 }}
+                      dangerouslySetInnerHTML={{ __html: item.feature.label || <span style={{ color: theme.textMuted, fontStyle: "italic" }}>Sans titre</span> as any }}
+                    />
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, alignItems: "center" }}>
+                      <span style={{ fontSize: 10, color: theme.textMuted }}>#{item.feature.gid}</span>
+                      {activeTags.map((t: Tag) => (
+                        <span key={t.id} style={{ fontSize: 10, color: t.color, fontWeight: 600 }}>{t.label}</span>
+                      ))}
+                      <span style={{ fontSize: 10, color: theme.textMuted, marginLeft: 4 }}>Supprimé le {fmt(item.deletedAt)}</span>
+                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                    <button
+                      onClick={() => onRestore(item)}
+                      style={{ ...btnBase, background: "#00c48c22", color: "#00c48c", border: "1px solid #00c48c44" }}
+                      title="Restaurer la carte"
+                    >
+                      {"\u21BA"} Restaurer
+                    </button>
+                    <button
+                      onClick={() => onDelete(item.id)}
+                      style={{ ...btnBase, background: "transparent", color: "#ef4444", border: "1px solid #ef444444", padding: "5px 8px" }}
+                      title="Supprimer définitivement"
+                    >
+                      {"\u00D7"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Sub, Tag } from "@/lib/tracker-types";
+import { Sub, Tag, TrashItem } from "@/lib/tracker-types";
 import { getInitialData, getInitialTags, TAB_NAMES, AXE_LABELS } from "@/lib/tracker-data";
 
 export interface TrackerState {
@@ -10,21 +10,23 @@ export interface TrackerState {
   tabNames: string[];
   axeLabels: string[];
   brouillon: string;
+  trash: TrashItem[];
 }
 
 // Encode state into the subs JSONB field with a versioned wrapper
 function encodeSubsField(state: TrackerState): any {
-  return { v: 2, data: state.subs, tabNames: state.tabNames, axeLabels: state.axeLabels, brouillon: state.brouillon };
+  return { v: 2, data: state.subs, tabNames: state.tabNames, axeLabels: state.axeLabels, brouillon: state.brouillon, trash: state.trash };
 }
 
 // Decode subs JSONB field — handles both old (raw array) and new (wrapped) formats
-function decodeSubsField(raw: any): { subs: Sub[][]; tabNames: string[]; axeLabels: string[]; brouillon: string } {
+function decodeSubsField(raw: any): { subs: Sub[][]; tabNames: string[]; axeLabels: string[]; brouillon: string; trash: TrashItem[] } {
   if (raw && raw.v === 2) {
     return {
       subs: raw.data as Sub[][],
       tabNames: raw.tabNames ?? [...TAB_NAMES],
       axeLabels: raw.axeLabels ?? [...AXE_LABELS],
       brouillon: raw.brouillon ?? "",
+      trash: raw.trash ?? [],
     };
   }
   // Legacy format: raw is Sub[][]
@@ -33,6 +35,7 @@ function decodeSubsField(raw: any): { subs: Sub[][]; tabNames: string[]; axeLabe
     tabNames: [...TAB_NAMES],
     axeLabels: [...AXE_LABELS],
     brouillon: "",
+    trash: [],
   };
 }
 
@@ -66,6 +69,7 @@ export function useTrackerPersistence() {
             tabNames: decoded.tabNames,
             axeLabels: decoded.axeLabels,
             brouillon: decoded.brouillon,
+            trash: decoded.trash,
           });
         } else {
           // First time: seed with initial data
@@ -86,7 +90,7 @@ export function useTrackerPersistence() {
       subs.forEach(tab => tab.forEach(s => s.groups.forEach(g => { gidCounter += g.features.length; })));
       gidCounter += 1;
 
-      const newState: TrackerState = { subs, tags, gidCounter, tabNames: [...TAB_NAMES], axeLabels: [...AXE_LABELS], brouillon: "" };
+      const newState: TrackerState = { subs, tags, gidCounter, tabNames: [...TAB_NAMES], axeLabels: [...AXE_LABELS], brouillon: "", trash: [] };
       setState(newState);
 
       // Insert into Supabase
@@ -160,6 +164,7 @@ export function useTrackerPersistence() {
           tabNames: decoded.tabNames,
           axeLabels: decoded.axeLabels,
           brouillon: decoded.brouillon,
+          trash: decoded.trash,
         };
         setState(refreshed);
         return refreshed;

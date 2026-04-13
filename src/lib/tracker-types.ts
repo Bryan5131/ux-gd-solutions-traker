@@ -56,6 +56,17 @@ export interface AxisColors {
   groupText: string;
 }
 
+export interface TrashItem {
+  id: string;
+  feature: Feature;
+  tabIndex: number;
+  subId: string;
+  subName: string;
+  gId: string;
+  groupName: string;
+  deletedAt: number;
+}
+
 export type MacroStatus = "none" | "outdated" | "kill" | "horsmvp";
 export type MicroStatus = "none" | "new" | "doing" | "done";
 
