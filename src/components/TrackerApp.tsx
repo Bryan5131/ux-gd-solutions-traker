@@ -493,6 +493,7 @@ export default function TrackerApp() {
           totalFeatures={totalFeatures}
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
+          tabNames={tabNames}
           isMobile={isMobile}
         />
       ) : (
@@ -2287,7 +2288,16 @@ function AddGroupButton({ sub, dispatch, theme }: any) {
 function AllView({ allSubs, tags, theme, dark, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
-  dispatch, findFeatureByGid, dispatchMirrorEdit, totalFeatures, removeTagGlobal, setTags, isMobile }: any) {
+  dispatch, findFeatureByGid, dispatchMirrorEdit, totalFeatures, removeTagGlobal, setTags, tabNames, isMobile }: any) {
+
+  const [viewMode, setViewMode] = useState<"all" | "structured">("structured");
+
+  // Auto-reset to flat when any specific filter is active
+  useEffect(() => {
+    if (macroFilter !== "all" || microFilter !== "all" || tagFilter !== "all") {
+      setViewMode("all");
+    }
+  }, [macroFilter, microFilter, tagFilter]);
 
   // Collect all features with metadata
   const allFeatures: { f: Feature; tabIndex: number; subName: string; groupName: string; sub: Sub; group: any }[] = [];
@@ -2342,6 +2352,7 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
           microFilter={microFilter} setMicroFilter={setMicroFilter}
           tagFilter={tagFilter} setTagFilter={setTagFilter}
           tags={tags} showNotes={showNotes} setShowNotes={setShowNotes}
+          viewMode={viewMode} setViewMode={setViewMode}
         />
       ) : (
         <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 20, alignItems: "center" }}>
@@ -2355,6 +2366,20 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
             {Object.entries(microStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
           </select>
           <TagFilterSelect value={tagFilter} onChange={setTagFilter} tags={tags} theme={theme} style={ctrl} />
+          <select
+            value={viewMode}
+            onChange={e => setViewMode(e.target.value as "all" | "structured")}
+            style={{
+              ...ctrl,
+              background: viewMode === "structured" ? "#1a3a2a" : theme.surface,
+              color: viewMode === "structured" ? "#00c48c" : theme.text,
+              borderColor: viewMode === "structured" ? "#00c48c55" : theme.border,
+              fontWeight: viewMode === "structured" ? 600 : 400,
+            }}
+          >
+            <option value="all">☰ Tous</option>
+            <option value="structured">⊞ Structuré</option>
+          </select>
           <button
             onClick={() => setShowNotes(!showNotes)}
             style={{
@@ -2370,8 +2395,140 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
         </div>
       )}
 
-      {/* Feature rows */}
-      {filtered.map(item => {
+      {/* Structured view */}
+      {viewMode === "structured" && (
+        <div>
+          {(allSubs as Sub[][]).map((tab, ti) => {
+            const axis = getAxisColors(ti, dark);
+            const tabLabel = (tabNames as string[])[ti] ?? ("Tab " + (ti + 1));
+            const subsWithContent = tab.map((sub: Sub) => {
+              const groupsWithContent = sub.groups.map((g: any) => {
+                const feats = g.features.filter(matchesFilters);
+                return { group: g, feats };
+              }).filter(({ feats }: any) => feats.length > 0);
+              return { sub, groupsWithContent };
+            }).filter(({ groupsWithContent }: any) => groupsWithContent.length > 0);
+            if (subsWithContent.length === 0) return null;
+            return (
+              <div key={ti} style={{ marginBottom: isMobile ? 24 : 36 }}>
+                {/* Tab header */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  marginBottom: isMobile ? 12 : 16,
+                  paddingBottom: isMobile ? 8 : 10,
+                  borderBottom: "2px solid " + axis.accent,
+                }}>
+                  <span style={{
+                    fontSize: isMobile ? 11 : 12, fontWeight: 700, letterSpacing: "0.08em",
+                    textTransform: "uppercase" as const, color: axis.accent,
+                    background: axis.accentLight, borderRadius: 6,
+                    padding: isMobile ? "3px 8px" : "4px 10px",
+                  }}>
+                    {tabLabel}
+                  </span>
+                </div>
+
+                {subsWithContent.map(({ sub, groupsWithContent }: any) => (
+                  <div key={sub.id} style={{ marginBottom: isMobile ? 16 : 24 }}>
+                    {/* Sub header */}
+                    <div style={{
+                      fontSize: isMobile ? 13 : 15, fontWeight: 600, color: axis.accentText,
+                      marginBottom: isMobile ? 6 : 10,
+                      paddingLeft: isMobile ? 8 : 12,
+                      borderLeft: "3px solid " + axis.accent,
+                    }}>
+                      {sub.name}
+                    </div>
+
+                    {groupsWithContent.map(({ group, feats }: any) => (
+                      <div key={group.id} style={{ marginBottom: isMobile ? 10 : 14 }}>
+                        {/* Group header (skip if "general") */}
+                        {group.name !== "general" && (
+                          <div style={{
+                            fontSize: isMobile ? 10 : 11, fontWeight: 600, color: axis.accent,
+                            opacity: 0.7, marginBottom: 4,
+                            paddingLeft: isMobile ? 20 : 24,
+                            textTransform: "uppercase" as const, letterSpacing: "0.06em",
+                          }}>
+                            {group.name}
+                          </div>
+                        )}
+                        {/* Features */}
+                        <div style={{ paddingLeft: isMobile ? 12 : 16 }}>
+                          {feats.map((f: Feature, idx: number) => {
+                            const isMirror = f.mirrorGid !== undefined;
+                            const mirrorSrc = isMirror && findFeatureByGid ? findFeatureByGid(f.mirrorGid) : null;
+                            const displayF = mirrorSrc ? mirrorSrc.feature : f;
+                            const dispatchForItem = (type: string, field?: string, val?: any, tagId?: string) => {
+                              if (isMirror && dispatchMirrorEdit) dispatchMirrorEdit(f.mirrorGid, type, field, val, tagId);
+                              else dispatch(ti, { type, subId: sub.id, gId: group.id, fId: f.id, field, val, tagId });
+                            };
+                            const tagFeat = mirrorSrc ? mirrorSrc.feature : f;
+                            const tagSub = mirrorSrc ? { id: mirrorSrc.subId } : sub;
+                            const tagGrp = mirrorSrc ? { id: mirrorSrc.gId } : group;
+                            const tagDisp = isMirror && dispatchMirrorEdit
+                              ? (action: any) => { if (action.type === "TT") dispatchMirrorEdit(f.mirrorGid, "TT", undefined, undefined, action.tagId); else dispatch(ti, action); }
+                              : (action: ReducerAction) => dispatch(ti, action);
+                            const macroBadge = getMacroBadgeColors(displayF.macro, dark);
+                            const microBadge = getMicroBadgeColors(displayF.micro, dark);
+                            const showNote = showNotes && displayF.note;
+                            const badgeStyle = (colors: any): React.CSSProperties => ({
+                              borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px",
+                              fontSize: isMobile ? 10 : 11, fontWeight: 600,
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              background: colors.bg, border: "1px solid " + colors.border,
+                              color: colors.text, cursor: "pointer", fontFamily: "Lexend, sans-serif",
+                            });
+                            const isOdd = idx % 2 === 1;
+                            return (
+                              <div key={f.id} style={{ marginBottom: 2 }}>
+                                <div style={{
+                                  display: "flex", alignItems: "center", padding: isMobile ? "9px 12px" : "10px 14px", gap: 8,
+                                  background: displayF.macro !== "none" ? macroBadge.bg + "CC" : isOdd ? theme.surfaceAlt : theme.surface,
+                                  borderRadius: showNote ? "8px 8px 0 0" : 8,
+                                  borderLeft: isMirror ? "3px solid #a855f7" : "3px solid transparent",
+                                }}>
+                                  <span style={{
+                                    fontSize: 9, fontWeight: 700, color: axis.accent,
+                                    background: axis.accent + "15", borderRadius: 4,
+                                    padding: "1px 5px", flexShrink: 0,
+                                  }}>#{displayF.gid}</span>
+                                  {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0 }}>{"\u21C6"}</span>}
+                                  <div style={{ width: 18, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    {displayF.note && <span style={{ fontSize: 11, opacity: showNotes ? 1 : 0.3 }}>{"\uD83D\uDCDD"}</span>}
+                                  </div>
+                                  <span style={{ flex: 1, fontSize: isMobile ? 12 : 13, lineHeight: 1.5, minWidth: 0 }} dangerouslySetInnerHTML={{ __html: displayF.label }} />
+                                  <TagArea feature={tagFeat} sub={tagSub} group={tagGrp} tags={tags} theme={theme} dark={dark} dispatch={tagDisp} removeTagGlobal={removeTagGlobal} setTags={setTags} isMobile={isMobile} />
+                                  <button onClick={() => dispatchForItem("UF", "macro", nextMacro(displayF.macro))} style={badgeStyle(macroBadge)}>
+                                    <span style={{ fontSize: 9 }}>{(macroStatuses as any)[displayF.macro]?.icon}</span>
+                                    {(macroStatuses as any)[displayF.macro]?.label}
+                                  </button>
+                                  <button onClick={() => dispatchForItem("UF", "micro", nextMicro(displayF.micro))} style={badgeStyle(microBadge)}>
+                                    <span style={{ fontSize: 9 }}>{(microStatuses as any)[displayF.micro]?.icon}</span>
+                                    {(microStatuses as any)[displayF.micro]?.label}
+                                  </button>
+                                </div>
+                                {showNote && (
+                                  <div style={{ padding: "6px 14px 10px 14px", background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder, borderRadius: "0 0 8px 8px" }}>
+                                    <span style={{ fontSize: 11, color: theme.noteText, lineHeight: 1.7 }}>{displayF.note}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Flat feature rows */}
+      {viewMode === "all" && filtered.map(item => {
         const axis = getAxisColors(item.tabIndex, dark);
         // Mirror resolution for AllView
         const isMirror = item.f.mirrorGid !== undefined;
@@ -2544,12 +2701,27 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
 
 // ─── Mobile All Toolbar ───────────────────────────────────────
 function MobileAllToolbar({ ctrl, theme, search, setSearch, macroFilter, setMacroFilter,
-  microFilter, setMicroFilter, tagFilter, setTagFilter, tags, showNotes, setShowNotes }: any) {
+  microFilter, setMicroFilter, tagFilter, setTagFilter, tags, showNotes, setShowNotes,
+  viewMode, setViewMode }: any) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
         <input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...ctrl, flex: 1, minWidth: 0, cursor: "text" }} />
+        <select
+          value={viewMode}
+          onChange={e => setViewMode(e.target.value)}
+          style={{
+            ...ctrl, flexShrink: 0,
+            background: viewMode === "structured" ? "#1a3a2a" : ctrl.background,
+            color: viewMode === "structured" ? "#00c48c" : ctrl.color,
+            borderColor: viewMode === "structured" ? "#00c48c55" : ctrl.borderColor,
+            fontWeight: viewMode === "structured" ? 600 : 400,
+          }}
+        >
+          <option value="all">☰ Tous</option>
+          <option value="structured">⊞ Structuré</option>
+        </select>
         <button onClick={() => setFiltersOpen(!filtersOpen)} style={{
           ...ctrl,
           fontWeight: filtersOpen ? 600 : 400,
