@@ -1258,6 +1258,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
           showNotes={showNotes}
           findFeatureByGid={findFeatureByGid}
           dispatchMirrorEdit={dispatchMirrorEdit}
+          getNextGid={getNextGid}
           dragRef={dragRef}
           removeTagGlobal={removeTagGlobal}
           setTags={setTags}
@@ -1283,7 +1284,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
 
 // ─── Feature Row ──────────────────────────────────────────────
 function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, dispatch,
-  showNotes, findFeatureByGid, dispatchMirrorEdit, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
+  showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
 
   // Resolve mirror source if this is a mirror card
   const isMirror = feature.mirrorGid !== undefined;
@@ -1435,6 +1436,13 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
               <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: f.label }} />
             </div>
             <button
+              onClick={(e) => { e.stopPropagation(); const { mirrorGid: _, ...copy } = f; dispatch({ type: "INSERT_F", subId: sub.id, gId: group.id, feat: { ...copy, gid: getNextGid() } }); }}
+              title="Dupliquer la carte"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.3, padding: "0 2px", color: theme.textMuted, flexShrink: 0 }}
+            >
+              {"\u29C9"}
+            </button>
+            <button
               onClick={(e) => { e.stopPropagation(); setDeleteModal({ subId: sub.id, gId: group.id, fId: feature.id, label: f.label }); }}
               style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.3, padding: 0, color: theme.textMuted, flexShrink: 0 }}
             >
@@ -1549,6 +1557,16 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.4, padding: "2px 4px", color: theme.textMuted }}
         >
           {"\u21AA"}
+        </button>
+        <button
+          onClick={() => {
+            const { mirrorGid: _, ...copy } = f;
+            dispatch({ type: "INSERT_F", subId: sub.id, gId: group.id, feat: { ...copy, gid: getNextGid() } });
+          }}
+          title="Dupliquer la carte"
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.4, padding: "2px 4px", color: theme.textMuted }}
+        >
+          {"\u29C9"}
         </button>
         <button
           onClick={() => setEditing(true)}
