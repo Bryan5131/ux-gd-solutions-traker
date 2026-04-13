@@ -2353,19 +2353,181 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
       });
     });
   });
-
   const filtered = allFeatures.filter(item => matchesFilters(item.f));
 
   const ctrl: React.CSSProperties = {
-    padding: isMobile ? "6px 10px" : "7px 12px",
-    borderRadius: 8,
-    border: "1px solid " + theme.border,
-    background: theme.surface,
-    fontSize: isMobile ? 11 : 12,
-    fontFamily: "Lexend, sans-serif",
-    color: theme.text,
-    outline: "none",
-    cursor: "pointer",
+    padding: isMobile ? "6px 10px" : "7px 12px", borderRadius: 8,
+    border: "1px solid " + theme.border, background: theme.surface,
+    fontSize: isMobile ? 11 : 12, fontFamily: "Lexend, sans-serif",
+    color: theme.text, outline: "none", cursor: "pointer",
+  };
+
+  const statusLabel = saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved!" : saveStatus === "refreshing" ? "Refreshing…" : saveStatus === "refreshed" ? "Refreshed!" : saveStatus === "error" ? "Error!" : null;
+
+  // ── shared card renderer ─────────────────────────────────────
+  const renderCard = (f: Feature, tabIndex: number, sub: Sub, group: any, idx: number) => {
+    const axis = getAxisColors(tabIndex, dark);
+    const isMirror = f.mirrorGid !== undefined;
+    const mirrorSrc = isMirror && findFeatureByGid ? findFeatureByGid(f.mirrorGid) : null;
+    const displayF = mirrorSrc ? mirrorSrc.feature : f;
+    const cardKey = tabIndex + "-" + f.gid;
+    const isSelected = selectedGids && selectedGids.has(f.gid);
+    const noteVis = showNotes || visibleNotes.has(cardKey);
+    const showNoteBody = noteVis && !!displayF.note;
+    const actionOpen = openActionKey === cardKey;
+
+    const dispatchItem = (type: string, field?: string, val?: any, tagId?: string) => {
+      if (isMirror && dispatchMirrorEdit) dispatchMirrorEdit(f.mirrorGid, type, field, val, tagId);
+      else dispatch(tabIndex, { type, subId: sub.id, gId: group.id, fId: f.id, field, val, tagId });
+    };
+    const tagFeat = mirrorSrc ? mirrorSrc.feature : f;
+    const tagSub = mirrorSrc ? { id: mirrorSrc.subId } : sub;
+    const tagGrp = mirrorSrc ? { id: mirrorSrc.gId } : group;
+    const tagDisp = isMirror && dispatchMirrorEdit
+      ? (action: any) => { if (action.type === "TT") dispatchMirrorEdit(f.mirrorGid, "TT", undefined, undefined, action.tagId); else dispatch(tabIndex, action); }
+      : (action: ReducerAction) => dispatch(tabIndex, action);
+    const macroBadge = getMacroBadgeColors(displayF.macro, dark);
+    const microBadge = getMicroBadgeColors(displayF.micro, dark);
+    const badgeStyle = (c: any): React.CSSProperties => ({
+      borderRadius: 6, padding: isMobile ? "2px 8px" : "3px 10px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
+      display: "inline-flex", alignItems: "center", gap: 4,
+      background: c.bg, border: "1px solid " + c.border, color: c.text,
+      cursor: "pointer", fontFamily: "Lexend, sans-serif",
+    });
+
+    const actionMenu = actionOpen ? (
+      <div ref={actionMenuRef} style={{
+        position: "absolute" as const, top: "calc(100% + 4px)", right: 0, zIndex: 9999,
+        background: theme.surface, border: "1px solid " + theme.border,
+        borderRadius: 8, padding: 4, minWidth: 155, boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif",
+      }}>
+        {[
+          { icon: "\u270F\uFE0F", label: "Éditer", action: () => { setEditCardLabel(displayF.label); setEditCardNote(displayF.note); setEditingCardKey(cardKey); setOpenActionKey(null); } },
+          { icon: "\u21AA", label: "Déplacer", action: () => { setMoveFeatModal({ tabIndex, subId: sub.id, gId: group.id, feature: f }); setOpenActionKey(null); } },
+          { icon: "\u29C9", label: "Dupliquer", action: () => { const { mirrorGid: _, ...copy } = displayF; dispatch(tabIndex, { type: "INSERT_F", subId: sub.id, gId: group.id, feat: { ...copy, gid: getNextGid() } }); setOpenActionKey(null); } },
+        ].map(item => (
+          <button key={item.label} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "7px 10px", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: theme.text, textAlign: "left" as const, borderRadius: 6, fontFamily: "Lexend, sans-serif" }}>
+            {item.icon} {item.label}
+          </button>
+        ))}
+        <div style={{ height: 1, background: theme.border, margin: "2px 0" }} />
+        <button onClick={() => { setDeleteModal({ tabIndex, subId: sub.id, gId: group.id, fId: f.id, label: displayF.label }); setOpenActionKey(null); }}
+          style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "7px 10px", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#ef4444", textAlign: "left" as const, borderRadius: 6, fontFamily: "Lexend, sans-serif" }}>
+          {"\uD83D\uDDD1"} Supprimer
+        </button>
+      </div>
+    ) : null;
+
+    if (editingCardKey === cardKey) {
+      const saveEdit = () => {
+        dispatch(tabIndex, { type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "label", val: editCardLabel });
+        dispatch(tabIndex, { type: "UF", subId: sub.id, gId: group.id, fId: f.id, field: "note", val: editCardNote });
+        setEditingCardKey(null);
+      };
+      return (
+        <div key={cardKey} style={{ padding: isMobile ? "10px 12px" : "12px 16px", background: theme.surfaceAlt, borderRadius: 10, marginBottom: 2, border: "1px solid " + theme.border }}>
+          <div style={{ fontSize: 10, color: theme.textMuted, marginBottom: 6, fontFamily: "Lexend, sans-serif" }}>
+            <span style={{ fontWeight: 700 }}>#{displayF.gid}</span>
+            {isMirror && <span style={{ color: "#a855f7", marginLeft: 6 }}>{"\u21C6"} miroir</span>}
+          </div>
+          <input
+            autoFocus
+            value={editCardLabel}
+            onChange={e => setEditCardLabel(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingCardKey(null); }}
+            style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid " + theme.border, background: theme.surface, color: theme.text, fontSize: isMobile ? 12 : 13, fontFamily: "Lexend, sans-serif", boxSizing: "border-box" as const, marginBottom: 8, outline: "none" }}
+            placeholder="Label…"
+          />
+          <textarea
+            value={editCardNote}
+            onChange={e => setEditCardNote(e.target.value)}
+            placeholder="Note…"
+            style={{ width: "100%", height: 72, padding: "7px 10px", borderRadius: 7, border: "1px solid " + theme.border, background: theme.surface, color: theme.text, fontSize: isMobile ? 11 : 12, fontFamily: "Lexend, sans-serif", boxSizing: "border-box" as const, resize: "vertical" as const, marginBottom: 8, outline: "none" }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={() => setEditingCardKey(null)} style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid " + theme.border, background: theme.surface, color: theme.text, cursor: "pointer", fontSize: 12, fontFamily: "Lexend, sans-serif" }}>Annuler</button>
+            <button onClick={saveEdit} style={{ padding: "6px 14px", borderRadius: 7, border: "none", background: "#00c48c", color: "#fff", cursor: "pointer", fontSize: 12, fontFamily: "Lexend, sans-serif", fontWeight: 600 }}>Sauvegarder</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (isMobile) {
+      return (
+        <div key={cardKey} style={{ marginBottom: 2 }}>
+          <div style={{
+            padding: "10px 12px",
+            background: isSelected ? axis.accent + "14" : displayF.macro !== "none" ? macroBadge.bg + "CC" : theme.surface,
+            borderRadius: showNoteBody ? "10px 10px 0 0" : 10,
+            borderLeft: isMirror ? "3px solid #a855f7" : isSelected ? "3px solid " + axis.accent : "3px solid transparent",
+            outline: isSelected ? "2px solid " + axis.accent + "44" : "none",
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
+              {toggleSelectFeature && <span onClick={(e) => { e.stopPropagation(); toggleSelectFeature(f.gid, { tabIndex, subId: sub.id, gId: group.id, fId: f.id, gid: f.gid, feature: f }); }} style={{ fontSize: 13, color: isSelected ? axis.accent : theme.textMuted, cursor: "pointer", flexShrink: 0 }}>{isSelected ? "\u2611" : "\u2610"}</span>}
+              <span style={{ fontSize: 9, fontWeight: 700, background: axis.accent + "18", border: "1px solid " + axis.accent + "44", color: axis.accent, borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginTop: 2 }}>#{displayF.gid}</span>
+              {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0, marginTop: 2 }}>{"\u21C6"}</span>}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 9, color: theme.textMuted, marginBottom: 2 }}>
+                  <span style={{ color: axis.accent, fontWeight: 600 }}>{sub.name}</span>
+                  {group.name !== "general" && <span>{" \u203A "}{group.name}</span>}
+                </div>
+                <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: displayF.label }} />
+              </div>
+              {displayF.note && <button onClick={(e) => { e.stopPropagation(); toggleNoteKey(cardKey); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0, opacity: noteVis ? 1 : 0.3, flexShrink: 0 }}>{"\uD83D\uDCDD"}</button>}
+              <div style={{ position: "relative" as const, flexShrink: 0 }}>
+                <button onClick={(e) => { e.stopPropagation(); setOpenActionKey(actionOpen ? null : cardKey); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, opacity: 0.4, padding: "0 2px", color: theme.textMuted }}>{"⋮"}</button>
+                {actionMenu}
+              </div>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, alignItems: "center" }}>
+              <button onClick={() => dispatchItem("UF", "macro", nextMacro(displayF.macro))} style={badgeStyle(macroBadge)}><span style={{ fontSize: 9 }}>{(macroStatuses as any)[displayF.macro]?.icon}</span>{(macroStatuses as any)[displayF.macro]?.label}</button>
+              <button onClick={() => dispatchItem("UF", "micro", nextMicro(displayF.micro))} style={badgeStyle(microBadge)}><span style={{ fontSize: 9 }}>{(microStatuses as any)[displayF.micro]?.icon}</span>{(microStatuses as any)[displayF.micro]?.label}</button>
+              <TagArea feature={tagFeat} sub={tagSub} group={tagGrp} tags={tags} theme={theme} dark={dark} dispatch={tagDisp} removeTagGlobal={removeTagGlobal} setTags={setTags} isMobile={true} />
+            </div>
+          </div>
+          {showNoteBody && <div style={{ padding: "6px 12px 10px", background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder, borderRadius: "0 0 10px 10px" }}><span style={{ fontSize: 11, color: theme.noteText, lineHeight: 1.7 }}>{displayF.note}</span></div>}
+        </div>
+      );
+    }
+
+    return (
+      <div key={cardKey} style={{ marginBottom: 2 }}>
+        <div
+          draggable
+          onDragStart={() => { dragRef.current = { type: "feature", subId: sub.id, gId: group.id, fId: f.id, tabIndex }; }}
+          onDragOver={(e: React.DragEvent) => e.preventDefault()}
+          onDrop={() => { if (dragRef.current?.type === "feature" && dragRef.current.tabIndex === tabIndex) dispatch(tabIndex, { type: "DROP_F", subId: sub.id, gId: group.id, tFId: f.id, drag: dragRef.current }); }}
+          style={{
+            display: "flex", alignItems: "center", padding: "10px 14px", gap: 8,
+            background: isSelected ? axis.accent + "14" : displayF.macro !== "none" ? macroBadge.bg + "CC" : idx % 2 === 1 ? theme.surfaceAlt : theme.surface,
+            borderRadius: showNoteBody ? "10px 10px 0 0" : 10,
+            borderLeft: isMirror ? "3px solid #a855f7" : isSelected ? "3px solid " + axis.accent : "3px solid transparent",
+            outline: isSelected ? "2px solid " + axis.accent + "44" : "none",
+            cursor: "default", position: "relative" as const,
+          }}
+        >
+          <span style={{ fontSize: 12, color: theme.textMuted, cursor: "grab", flexShrink: 0 }}>{"\u2807"}</span>
+          {toggleSelectFeature && <span onClick={() => toggleSelectFeature(f.gid, { tabIndex, subId: sub.id, gId: group.id, fId: f.id, gid: f.gid, feature: f })} style={{ fontSize: 13, color: isSelected ? axis.accent : theme.textMuted, cursor: "pointer", flexShrink: 0 }}>{isSelected ? "\u2611" : "\u2610"}</span>}
+          <span style={{ fontSize: 10, fontWeight: 700, background: axis.accent + "18", border: "1px solid " + axis.accent + "44", color: axis.accent, borderRadius: 6, padding: "2px 6px", minWidth: 30, textAlign: "center" as const, flexShrink: 0 }}>#{displayF.gid}</span>
+          {isMirror && <span style={{ fontSize: 10, color: "#a855f7", fontWeight: 700, flexShrink: 0 }}>{"\u21C6"}</span>}
+          <div style={{ width: 22, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {displayF.note && <button onClick={() => toggleNoteKey(cardKey)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, padding: 0, opacity: noteVis ? 1 : 0.3 }}>{"\uD83D\uDCDD"}</button>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, color: theme.textMuted }}><span style={{ color: axis.accent, fontWeight: 600 }}>{sub.name}</span>{group.name !== "general" && <span>{" \u203A "}{group.name}</span>}</div>
+            <span style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: displayF.label }} />
+          </div>
+          <TagArea feature={tagFeat} sub={tagSub} group={tagGrp} tags={tags} theme={theme} dark={dark} dispatch={tagDisp} removeTagGlobal={removeTagGlobal} setTags={setTags} isMobile={false} />
+          <button onClick={() => dispatchItem("UF", "macro", nextMacro(displayF.macro))} style={badgeStyle(macroBadge)}><span style={{ fontSize: 10 }}>{(macroStatuses as any)[displayF.macro]?.icon}</span>{(macroStatuses as any)[displayF.macro]?.label}</button>
+          <button onClick={() => dispatchItem("UF", "micro", nextMicro(displayF.micro))} style={badgeStyle(microBadge)}><span style={{ fontSize: 10 }}>{(microStatuses as any)[displayF.micro]?.icon}</span>{(microStatuses as any)[displayF.micro]?.label}</button>
+          <div style={{ position: "relative" as const, flexShrink: 0 }}>
+            <button onClick={() => setOpenActionKey(actionOpen ? null : cardKey)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, opacity: 0.35, padding: "2px 5px", color: theme.textMuted, lineHeight: 1 }} title="Actions">{"⋮"}</button>
+            {actionMenu}
+          </div>
+        </div>
+        {showNoteBody && <div style={{ padding: "8px 16px 12px 62px", background: theme.noteBg, borderTop: "1px solid " + theme.noteBorder, borderRadius: "0 0 10px 10px" }}><span style={{ fontSize: 12, color: theme.noteText, lineHeight: 1.7 }}>{displayF.note}</span></div>}
+      </div>
+    );
   };
 
   return (
