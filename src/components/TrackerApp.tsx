@@ -2297,9 +2297,21 @@ function AddGroupButton({ sub, dispatch, theme }: any) {
 function AllView({ allSubs, tags, theme, dark, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
-  dispatch, findFeatureByGid, dispatchMirrorEdit, totalFeatures, removeTagGlobal, setTags, tabNames, isMobile }: any) {
+  dispatch, findFeatureByGid, dispatchMirrorEdit, totalFeatures, removeTagGlobal, setTags, tabNames, isMobile,
+  onForceSave, onRefresh, saveStatus, selectedGids, toggleSelectFeature, getNextGid,
+  setDeleteModal, setMoveFeatModal, renameTab }: any) {
 
   const [viewMode, setViewMode] = useState<"all" | "structured">("structured");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [visibleNotes, setVisibleNotes] = useState<Set<string>>(new Set());
+  const [openActionKey, setOpenActionKey] = useState<string | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [editingCardKey, setEditingCardKey] = useState<string | null>(null);
+  const [editCardLabel, setEditCardLabel] = useState("");
+  const [editCardNote, setEditCardNote] = useState("");
+  const dragRef = useRef<any>({});
+  const actionMenuRef = useRef<HTMLDivElement>(null);
 
   // Auto-reset to flat when any specific filter is active
   useEffect(() => {
