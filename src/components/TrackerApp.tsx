@@ -115,6 +115,20 @@ export default function TrackerApp() {
   const [tagFilter, setTagFilter] = useState("all");
   const [showNotes, setShowNotes] = useState(false);
 
+  // Multi-select state
+  type SelEntry = { tabIndex: number; subId: string; gId: string; fId: number; gid: number; feature: any };
+  const [selMap, setSelMap] = useState<Map<number, SelEntry>>(new Map());
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const toggleSelectFeature = useCallback((gid: number, entry: SelEntry) => {
+    setSelMap(prev => {
+      const next = new Map(prev);
+      if (next.has(gid)) next.delete(gid); else next.set(gid, entry);
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelMap(new Map()), []);
+  const selectedGids = useMemo(() => new Set(selMap.keys()), [selMap]);
+
   // Modal state
   const [deleteModal, setDeleteModal] = useState<{ tabIndex: number; subId: string; gId: string; fId: number; label: string } | null>(null);
   const [deleteSubModal, setDeleteSubModal] = useState<{ tabIndex: number; subId: string; label: string } | null>(null);
@@ -273,6 +287,72 @@ export default function TrackerApp() {
 
   return (
     <div style={containerStyle}>
+      {selMap.size > 0 && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 10000,
+          background: "#1a3a2a", borderBottom: "2px solid #00c48c",
+          padding: "10px 20px", display: "flex", alignItems: "center", gap: 12,
+          fontFamily: "Lexend, sans-serif",
+        }}>
+          <span style={{ fontSize: 13, color: "#00c48c", fontWeight: 600 }}>
+            {selMap.size} sélectionnée{selMap.size > 1 ? "s" : ""}
+          </span>
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={() => {
+              selMap.forEach(({ tabIndex, subId, gId, fId }) => {
+                dispatch(tabIndex, { type: "DF", subId, gId, fId });
+              });
+              clearSelection();
+            }}
+            style={{
+              padding: "6px 14px", borderRadius: 8, border: "1px solid #ef4444",
+              background: "transparent", color: "#ef4444", fontSize: 12,
+              cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: 600,
+            }}
+          >
+            {"\uD83D\uDDD1"} Supprimer
+          </button>
+          <button
+            onClick={() => setBulkMoveOpen(true)}
+            style={{
+              padding: "6px 14px", borderRadius: 8, border: "none",
+              background: "#00c48c", color: "#003d2e", fontSize: 12,
+              cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: 600,
+            }}
+          >
+            {"\u21AA"} Déplacer
+          </button>
+          <button
+            onClick={clearSelection}
+            style={{
+              padding: "6px 10px", borderRadius: 8, border: "1px solid #3d3b34",
+              background: "transparent", color: "#9e9a91", fontSize: 12,
+              cursor: "pointer", fontFamily: "Lexend, sans-serif",
+            }}
+          >
+            {"\u00D7"} Annuler
+          </button>
+        </div>
+      )}
+      {bulkMoveOpen && selMap.size > 0 && (
+        <BulkMoveModal
+          theme={theme}
+          isMobile={isMobile}
+          count={selMap.size}
+          allSubs={allSubs}
+          tabNames={tabNames}
+          onCancel={() => setBulkMoveOpen(false)}
+          onMove={(targetTabIndex: number, targetSubId: string, targetGId: string) => {
+            selMap.forEach(({ tabIndex, subId, gId, fId, feature }) => {
+              dispatch(tabIndex, { type: "DF", subId, gId, fId });
+              dispatch(targetTabIndex, { type: "INSERT_F", subId: targetSubId, gId: targetGId, feat: { ...feature, id: 0 } });
+            });
+            clearSelection();
+            setBulkMoveOpen(false);
+          }}
+        />
+      )}
       {showBrouillon ? (
         <BrouillonView
           text={brouillonText}
@@ -348,6 +428,8 @@ export default function TrackerApp() {
           onRenameTab={(name: string) => renameTab(activeTab, name)}
           axeLabel={axeLabels[TAB_AXES[activeTab]] ?? ""}
           onRenameAxe={(name: string) => renameAxe(TAB_AXES[activeTab] ?? 0, name)}
+          selectedGids={selectedGids}
+          toggleSelectFeature={toggleSelectFeature}
         />
       )}
 
@@ -648,7 +730,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
   tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
   findFeatureByGid, dispatchMirrorEdit, getNextGid, setNewBesoinModal, onForceSave,
   onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile, onRenameTab,
-  axeLabel, onRenameAxe
+  axeLabel, onRenameAxe, selectedGids, toggleSelectFeature
 }: any) {
   const axis = getAxisColors(tabIndex, dark);
   const dragRef = useRef<any>({});
@@ -808,6 +890,8 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
           setDeleteSubModal={setDeleteSubModal}
           setMoveFeatModal={setMoveFeatModal}
           isMobile={isMobile}
+          selectedGids={selectedGids}
+          toggleSelectFeature={toggleSelectFeature}
         />
       ))}
     </div>
@@ -1007,7 +1091,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
 // ─── Sub Section ──────────────────────────────────────────────
 function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen,
   collapsed, toggleCollapse, isGroupOpen, toggleGroupOpen, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile }: any) {
+  showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile, selectedGids, toggleSelectFeature }: any) {
 
   const featureCount = sub.groups.reduce((c: number, g: any) => c + g.features.length, 0);
   const showSingleGroup = sub.groups.length === 1 && sub.groups[0].name === "general";
@@ -1111,6 +1195,8 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
               setMoveFeatModal={setMoveFeatModal}
               tabIndex={tabIndex}
               isMobile={isMobile}
+              selectedGids={selectedGids}
+              toggleSelectFeature={toggleSelectFeature}
             />
           ) : (
             sub.groups.map((g: any) => (
@@ -1137,6 +1223,8 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
                 setMoveFeatModal={setMoveFeatModal}
                 tabIndex={tabIndex}
                 isMobile={isMobile}
+                selectedGids={selectedGids}
+                toggleSelectFeature={toggleSelectFeature}
               />
             ))
           )}
@@ -1150,7 +1238,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
 // ─── Group Section ────────────────────────────────────────────
 function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
   dispatch, matchesFilters, showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef,
-  removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
+  removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile, selectedGids, toggleSelectFeature }: any) {
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
@@ -1231,6 +1319,8 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
           removeTagGlobal={removeTagGlobal} setTags={setTags}
           setDeleteModal={setDeleteModal} setMoveFeatModal={setMoveFeatModal} tabIndex={tabIndex}
           isMobile={isMobile}
+          selectedGids={selectedGids}
+          toggleSelectFeature={toggleSelectFeature}
         />
       )}
     </div>
@@ -1240,7 +1330,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
 // ─── Group Features (shared between single-group and multi-group) ──
 function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesFilters,
   showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags,
-  setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
+  setDeleteModal, setMoveFeatModal, tabIndex, isMobile, selectedGids, toggleSelectFeature }: any) {
   return (
     <div style={{ padding: "4px 0" }}>
       {group.features.filter(matchesFilters).map((f: Feature, idx: number) => (
@@ -1265,6 +1355,8 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
           setMoveFeatModal={setMoveFeatModal}
           tabIndex={tabIndex}
           isMobile={isMobile}
+          selectedGids={selectedGids}
+          toggleSelectFeature={toggleSelectFeature}
         />
       ))}
       <AddFeatureForm
@@ -1283,7 +1375,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
 
 // ─── Feature Row ──────────────────────────────────────────────
 function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, dispatch,
-  showNotes, findFeatureByGid, dispatchMirrorEdit, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
+  showNotes, findFeatureByGid, dispatchMirrorEdit, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile, selectedGids, toggleSelectFeature }: any) {
 
   // Resolve mirror source if this is a mirror card
   const isMirror = feature.mirrorGid !== undefined;
@@ -1322,6 +1414,14 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
     background: colors.bg, border: "1px solid " + colors.border, color: colors.text,
     cursor: "pointer", fontFamily: "Lexend, sans-serif",
   });
+
+  const isSelected = selectedGids ? selectedGids.has(feature.gid) : false;
+  const handleToggleSelect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (toggleSelectFeature) {
+      toggleSelectFeature(feature.gid, { tabIndex, subId: sub.id, gId: group.id, fId: feature.id, gid: feature.gid, feature });
+    }
+  };
 
   const showNote = (showNotes || noteVisible) && f.note;
 
@@ -1411,10 +1511,14 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
             borderRadius: showNote ? "10px 10px 0 0" : 10,
             borderLeft: isMirror ? "3px solid #a855f7" : microBorderLeft,
             cursor: "default",
+            outline: isSelected ? "2px solid #00c48c44" : "none",
           }}
         >
           {/* Top row: GID + label */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
+            <span onClick={handleToggleSelect} style={{ fontSize: 13, color: isSelected ? "#00c48c" : theme.textMuted, cursor: "pointer", flexShrink: 0 }}>
+              {isSelected ? "\u2611" : "\u2610"}
+            </span>
             <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, flexShrink: 0, marginTop: 2 }}>#{f.gid}</span>
             {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0, marginTop: 2 }}>{"\u21C6"}</span>}
             {f.note && (
@@ -1499,8 +1603,12 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           borderRadius: showNote ? "10px 10px 0 0" : 10,
           borderLeft: isMirror ? "3px solid #a855f7" : microBorderLeft,
           cursor: "default",
+          outline: isSelected ? "2px solid #00c48c44" : "none",
         }}
       >
+        <span onClick={handleToggleSelect} style={{ fontSize: 13, color: isSelected ? "#00c48c" : theme.textMuted, cursor: "pointer", flexShrink: 0 }}>
+          {isSelected ? "\u2611" : "\u2610"}
+        </span>
         <span style={{ fontSize: 12, color: theme.textMuted, cursor: "grab", flexShrink: 0 }}>{"\u2807"}</span>
         <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, minWidth: 30, flexShrink: 0 }}>#{f.gid}</span>
         {isMirror && <span style={{ fontSize: 10, color: "#a855f7", fontWeight: 700, flexShrink: 0 }} title={"Miroir de #" + feature.mirrorGid}>{"\u21C6"}</span>}
@@ -2299,17 +2407,20 @@ function MoveFeatureModal({ theme, isMobile, feature, allSubs, tabNames, sourceT
   const groups = selSub?.groups ?? [];
   const showGroups = groups.length > 1 || (groups.length === 1 && groups[0].name !== "general");
 
-  // Auto-select first valid sub/group when tab changes
+  // Auto-select first sub when tab changes
   useEffect(() => {
-    const available = (allSubs[selTab] ?? []).filter((s: any) => !(s.id === sourceSubId && selTab === sourceTabIndex));
-    const first = available[0];
-    setSelSubId(first?.id ?? (allSubs[selTab]?.[0]?.id ?? ""));
+    const first = (allSubs[selTab] ?? [])[0];
+    setSelSubId(first?.id ?? "");
     setSelGId("");
   }, [selTab]);
 
+  // Auto-select first valid group when sub changes
   useEffect(() => {
-    const firstGroup = selSub?.groups?.[0];
-    setSelGId(firstGroup?.id ?? "");
+    if (!selSub) return;
+    const isSourceSub = selTab === sourceTabIndex && selSubId === sourceSubId;
+    const validGroups = selSub.groups.filter((g: any) => !(isSourceSub && g.id === sourceGId));
+    const first = validGroups[0] ?? selSub.groups[0];
+    setSelGId(first?.id ?? "");
   }, [selSubId, selSub]);
 
   const targetGId = showGroups ? selGId : (groups[0]?.id ?? "");
@@ -2345,21 +2456,20 @@ function MoveFeatureModal({ theme, isMobile, feature, allSubs, tabNames, sourceT
           {subs.length === 0 ? (
             <div style={{ fontSize: 12, color: theme.textMuted, padding: "8px 0" }}>Aucune catégorie dans cet onglet.</div>
           ) : subs.map((s: any) => {
-            const isSrc = selTab === sourceTabIndex && s.id === sourceSubId;
+            const isSrcSub = selTab === sourceTabIndex && s.id === sourceSubId;
             return (
               <button
                 key={s.id}
-                onClick={() => !isSrc && setSelSubId(s.id)}
+                onClick={() => setSelSubId(s.id)}
                 style={{
                   padding: "8px 12px", borderRadius: 8, fontSize: 12, textAlign: "left" as const,
                   border: "1px solid " + (selSubId === s.id ? getAxisColors(selTab, false).accent : theme.border),
                   background: selSubId === s.id ? getAxisColors(selTab, false).accentLight : theme.surface,
-                  color: isSrc ? theme.textMuted : (selSubId === s.id ? getAxisColors(selTab, false).accent : theme.text),
-                  cursor: isSrc ? "not-allowed" : "pointer",
+                  color: selSubId === s.id ? getAxisColors(selTab, false).accent : theme.text,
+                  cursor: "pointer",
                   fontFamily: "Lexend, sans-serif", fontWeight: selSubId === s.id ? 600 : 400,
-                  opacity: isSrc ? 0.4 : 1,
                 }}
-              >{s.name}{isSrc ? " (source)" : ""}</button>
+              >{s.name}{isSrcSub ? <span style={{ fontSize: 10, color: theme.textMuted, marginLeft: 6 }}>(source)</span> : null}</button>
             );
           })}
         </div>
@@ -2369,18 +2479,108 @@ function MoveFeatureModal({ theme, isMobile, feature, allSubs, tabNames, sourceT
           <>
             <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Sous-groupe</div>
             <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 }}>
+              {groups.map((g: any) => {
+                const isSrcGroup = selTab === sourceTabIndex && selSubId === sourceSubId && g.id === sourceGId;
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => !isSrcGroup && setSelGId(g.id)}
+                    style={{
+                      padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: selGId === g.id ? 700 : 400,
+                      border: "1px solid " + (selGId === g.id ? getAxisColors(selTab, false).accent : theme.border),
+                      background: selGId === g.id ? getAxisColors(selTab, false).accentLight : theme.surface,
+                      color: isSrcGroup ? theme.textMuted : (selGId === g.id ? getAxisColors(selTab, false).accent : theme.textSub),
+                      cursor: isSrcGroup ? "not-allowed" : "pointer",
+                      opacity: isSrcGroup ? 0.45 : 1,
+                      fontFamily: "Lexend, sans-serif",
+                    }}
+                  >{g.name}{isSrcGroup ? " (source)" : ""}</button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid " + theme.border, background: theme.surface, fontSize: 12, fontFamily: "Lexend, sans-serif", color: theme.text, cursor: "pointer" }}>Annuler</button>
+          <button
+            onClick={() => isValid && onMove(selTab, selSubId, targetGId)}
+            disabled={!isValid}
+            style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: isValid ? "#00c48c" : theme.border, fontSize: 12, fontFamily: "Lexend, sans-serif", color: isValid ? "#003d2e" : theme.textMuted, cursor: isValid ? "pointer" : "not-allowed", fontWeight: 600 }}
+          >Déplacer</button>
+        </div>
+      </div>
+    </ModalBackdrop>
+  );
+}
+
+function BulkMoveModal({ theme, isMobile, count, allSubs, tabNames, onCancel, onMove }: any) {
+  const [selTab, setSelTab] = useState(0);
+  const [selSubId, setSelSubId] = useState<string>("");
+  const [selGId, setSelGId] = useState<string>("");
+
+  const subs: any[] = allSubs[selTab] ?? [];
+  const selSub = subs.find((s: any) => s.id === selSubId);
+  const groups = selSub?.groups ?? [];
+  const showGroups = groups.length > 1 || (groups.length === 1 && groups[0].name !== "general");
+
+  useEffect(() => {
+    const first = (allSubs[selTab] ?? [])[0];
+    setSelSubId(first?.id ?? "");
+    setSelGId("");
+  }, [selTab]);
+
+  useEffect(() => {
+    setSelGId(selSub?.groups?.[0]?.id ?? "");
+  }, [selSubId, selSub]);
+
+  const targetGId = showGroups ? selGId : (groups[0]?.id ?? "");
+  const isValid = selSubId && targetGId;
+
+  return (
+    <ModalBackdrop>
+      <div style={{ background: theme.surface, borderRadius: 14, width: isMobile ? "95%" : 420, maxWidth: 420, padding: isMobile ? 20 : 24, boxShadow: theme.shadowMd, fontFamily: "Lexend, sans-serif" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 4 }}>Déplacer vers...</div>
+        <div style={{ fontSize: 11, color: theme.textSub, marginBottom: 16 }}>{count} carte{count > 1 ? "s" : ""} sélectionnée{count > 1 ? "s" : ""}</div>
+
+        <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Onglet</div>
+        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 }}>
+          {tabNames.map((name: string, i: number) => (
+            <button key={i} onClick={() => setSelTab(i)} style={{
+              padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: selTab === i ? 700 : 400,
+              border: "1px solid " + (selTab === i ? getAxisColors(i, false).accent : theme.border),
+              background: selTab === i ? getAxisColors(i, false).accentLight : theme.surface,
+              color: selTab === i ? getAxisColors(i, false).accent : theme.textSub,
+              cursor: "pointer", fontFamily: "Lexend, sans-serif",
+            }}>{name}</button>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Catégorie</div>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 4, marginBottom: 16, maxHeight: 180, overflowY: "auto" as const }}>
+          {subs.map((s: any) => (
+            <button key={s.id} onClick={() => setSelSubId(s.id)} style={{
+              padding: "8px 12px", borderRadius: 8, fontSize: 12, textAlign: "left" as const,
+              border: "1px solid " + (selSubId === s.id ? getAxisColors(selTab, false).accent : theme.border),
+              background: selSubId === s.id ? getAxisColors(selTab, false).accentLight : theme.surface,
+              color: selSubId === s.id ? getAxisColors(selTab, false).accent : theme.text,
+              cursor: "pointer", fontFamily: "Lexend, sans-serif", fontWeight: selSubId === s.id ? 600 : 400,
+            }}>{s.name}</button>
+          ))}
+        </div>
+
+        {showGroups && selSubId && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Sous-groupe</div>
+            <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 }}>
               {groups.map((g: any) => (
-                <button
-                  key={g.id}
-                  onClick={() => setSelGId(g.id)}
-                  style={{
-                    padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: selGId === g.id ? 700 : 400,
-                    border: "1px solid " + (selGId === g.id ? getAxisColors(selTab, false).accent : theme.border),
-                    background: selGId === g.id ? getAxisColors(selTab, false).accentLight : theme.surface,
-                    color: selGId === g.id ? getAxisColors(selTab, false).accent : theme.textSub,
-                    cursor: "pointer", fontFamily: "Lexend, sans-serif",
-                  }}
-                >{g.name}</button>
+                <button key={g.id} onClick={() => setSelGId(g.id)} style={{
+                  padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: selGId === g.id ? 700 : 400,
+                  border: "1px solid " + (selGId === g.id ? getAxisColors(selTab, false).accent : theme.border),
+                  background: selGId === g.id ? getAxisColors(selTab, false).accentLight : theme.surface,
+                  color: selGId === g.id ? getAxisColors(selTab, false).accent : theme.textSub,
+                  cursor: "pointer", fontFamily: "Lexend, sans-serif",
+                }}>{g.name}</button>
               ))}
             </div>
           </>
