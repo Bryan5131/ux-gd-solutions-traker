@@ -12,7 +12,7 @@ export const lightTheme: ThemeColors = {
 export const darkTheme: ThemeColors = {
   bg: "#141412", surface: "#1e1d1a", surfaceAlt: "#252420",
   border: "#2e2c27", borderStrong: "#3d3b34",
-  text: "#f0ede6", textSub: "#9e9a91", textMuted: "#5c5950",
+  text: "#f0ede6", textSub: "#9e9a91", textMuted: "#5c5050",
   noteBg: "#2a240e", noteBorder: "#7a5a00", noteText: "#f5cc6a",
   shadow: "0 1px 4px rgba(0,0,0,0.3)",
   shadowMd: "0 4px 16px rgba(0,0,0,0.4)"

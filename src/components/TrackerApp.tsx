@@ -1428,10 +1428,12 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
                 {"\uD83D\uDCDD"}
               </button>
             )}
-            <span
-              style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.5 }}
-              dangerouslySetInnerHTML={{ __html: f.label }}
-            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 9, color: axis.accent, fontWeight: 600, marginBottom: 1 }}>
+                {sub.name}{group.name !== "general" && <span style={{ color: axis.accent, fontWeight: 400, opacity: 0.6 }}>{" \u203A "}{group.name}</span>}
+              </div>
+              <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: f.label }} />
+            </div>
             <button
               onClick={(e) => { e.stopPropagation(); setDeleteModal({ subId: sub.id, gId: group.id, fId: feature.id, label: f.label }); }}
               style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.3, padding: 0, color: theme.textMuted, flexShrink: 0 }}
@@ -1515,10 +1517,12 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
             </button>
           )}
         </div>
-        <span
-          style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.5 }}
-          dangerouslySetInnerHTML={{ __html: f.label }}
-        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: axis.accent, fontWeight: 600, marginBottom: 1 }}>
+            {sub.name}{group.name !== "general" && <span style={{ color: axis.accent, fontWeight: 400, opacity: 0.6 }}>{" \u203A "}{group.name}</span>}
+          </div>
+          <span style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: f.label }} />
+        </div>
         <TagArea
           feature={tagFeature} sub={tagSub} group={tagGroup} tags={tags}
           theme={theme} dark={dark} dispatch={tagDispatch}
