@@ -495,6 +495,15 @@ export default function TrackerApp() {
           setTags={setTags}
           tabNames={tabNames}
           isMobile={isMobile}
+          onForceSave={handleForceSave}
+          onRefresh={handleRefresh}
+          saveStatus={saveStatus}
+          selectedGids={selectedGids}
+          toggleSelectFeature={toggleSelectFeature}
+          getNextGid={getNextGid}
+          setDeleteModal={(info: any) => setDeleteModal(info ? { ...info } : null)}
+          setMoveFeatModal={(info: any) => setMoveFeatModal(info ? { ...info } : null)}
+          renameTab={renameTab}
         />
       ) : (
         <TabContent
