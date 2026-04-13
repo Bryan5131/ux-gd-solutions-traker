@@ -114,6 +114,7 @@ export default function TrackerApp() {
   const [microFilter, setMicroFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [showNotes, setShowNotes] = useState(false);
+  const [breadcrumbMode, setBreadcrumbMode] = useState<"full" | "condensed">("full");
 
   // Modal state
   const [deleteModal, setDeleteModal] = useState<{ tabIndex: number; subId: string; gId: string; fId: number; label: string } | null>(null);
@@ -331,6 +332,8 @@ export default function TrackerApp() {
           setTagFilter={setTagFilter}
           showNotes={showNotes}
           setShowNotes={setShowNotes}
+          breadcrumbMode={breadcrumbMode}
+          setBreadcrumbMode={setBreadcrumbMode}
           matchesFilters={matchesFilters}
           findFeatureByGid={findFeatureByGid}
           dispatchMirrorEdit={dispatchMirrorEdit}
@@ -645,7 +648,7 @@ function Footer({ activeTab, setActiveTab, dark, setDark, theme, isMobile, tabNa
 function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dispatch,
   toggleCollapse, isOpen, toggleAllSections, search, setSearch,
   macroFilter, setMacroFilter, microFilter, setMicroFilter,
-  tagFilter, setTagFilter, showNotes, setShowNotes, matchesFilters,
+  tagFilter, setTagFilter, showNotes, setShowNotes, breadcrumbMode, setBreadcrumbMode, matchesFilters,
   findFeatureByGid, dispatchMirrorEdit, getNextGid, setNewBesoinModal, onForceSave,
   onRefresh, saveStatus, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile, onRenameTab,
   axeLabel, onRenameAxe
@@ -771,6 +774,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
         tagFilter={tagFilter} setTagFilter={setTagFilter}
         tags={tags}
         showNotes={showNotes} setShowNotes={setShowNotes}
+        breadcrumbMode={breadcrumbMode} setBreadcrumbMode={setBreadcrumbMode}
         anyOpen={anyOpen} toggleAllSections={toggleAllSections}
         onForceSave={onForceSave}
         onRefresh={onRefresh}
@@ -798,6 +802,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
           dispatch={dispatch}
           matchesFilters={matchesFilters}
           showNotes={showNotes}
+          breadcrumbMode={breadcrumbMode}
           findFeatureByGid={findFeatureByGid}
           dispatchMirrorEdit={dispatchMirrorEdit}
           getNextGid={getNextGid}
@@ -817,6 +822,7 @@ function TabContent({ tabIndex, tabName, subs, collapsed, tags, theme, dark, dis
 // ─── Toolbar ──────────────────────────────────────────────────
 function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFilter,
   microFilter, setMicroFilter, tagFilter, setTagFilter, tags, showNotes, setShowNotes,
+  breadcrumbMode, setBreadcrumbMode,
   anyOpen, toggleAllSections, onForceSave, onRefresh, saveStatus, onNewBesoin, isMobile }: any) {
 
   const [filtersOpen, setFiltersOpen] = useState(!isMobile);
@@ -911,6 +917,19 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
             >
               {"\uD83D\uDCDD"} Notes
             </button>
+            <button
+              onClick={() => setBreadcrumbMode(breadcrumbMode === "full" ? "condensed" : "full")}
+              style={{
+                ...ctrl,
+                flex: "1 1 calc(50% - 3px)",
+                background: breadcrumbMode === "condensed" ? axis.accentLight : theme.surface,
+                color: breadcrumbMode === "condensed" ? axis.accentText : theme.text,
+                borderColor: breadcrumbMode === "condensed" ? axis.accent : theme.border,
+                fontWeight: breadcrumbMode === "condensed" ? 600 : 400,
+              }}
+            >
+              {breadcrumbMode === "full" ? "\u25A4 Fil" : "\u2022 Fil"}
+            </button>
             <button onClick={toggleAllSections} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
               {anyOpen ? "\u2191 Fermer" : "\u2193 Ouvrir"}
             </button>
@@ -970,6 +989,19 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
       >
         {"\uD83D\uDCDD"} Notes
       </button>
+      <button
+        onClick={() => setBreadcrumbMode(breadcrumbMode === "full" ? "condensed" : "full")}
+        title={breadcrumbMode === "full" ? "Réduire le fil d'ariane" : "Afficher le fil d'ariane complet"}
+        style={{
+          ...ctrl,
+          background: breadcrumbMode === "condensed" ? axis.accentLight : theme.surface,
+          color: breadcrumbMode === "condensed" ? axis.accentText : theme.text,
+          borderColor: breadcrumbMode === "condensed" ? axis.accent : theme.border,
+          fontWeight: breadcrumbMode === "condensed" ? 600 : 400,
+        }}
+      >
+        {breadcrumbMode === "full" ? "\u25A4 Fil" : "\u2022 Fil"}
+      </button>
       <button onClick={toggleAllSections} style={ctrl}>
         {anyOpen ? "\u2191 Collapse all" : "\u2193 Open all"}
       </button>
@@ -1007,7 +1039,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
 // ─── Sub Section ──────────────────────────────────────────────
 function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen,
   collapsed, toggleCollapse, isGroupOpen, toggleGroupOpen, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile }: any) {
+  showNotes, breadcrumbMode, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags, setDeleteModal, setDeleteSubModal, setMoveFeatModal, isMobile }: any) {
 
   const featureCount = sub.groups.reduce((c: number, g: any) => c + g.features.length, 0);
   const showSingleGroup = sub.groups.length === 1 && sub.groups[0].name === "general";
@@ -1101,6 +1133,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
               dispatch={dispatch}
               matchesFilters={matchesFilters}
               showNotes={showNotes}
+              breadcrumbMode={breadcrumbMode}
               findFeatureByGid={findFeatureByGid}
               dispatchMirrorEdit={dispatchMirrorEdit}
               getNextGid={getNextGid}
@@ -1127,6 +1160,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
                 dispatch={dispatch}
                 matchesFilters={matchesFilters}
                 showNotes={showNotes}
+                breadcrumbMode={breadcrumbMode}
                 findFeatureByGid={findFeatureByGid}
                 dispatchMirrorEdit={dispatchMirrorEdit}
                 getNextGid={getNextGid}
@@ -1149,7 +1183,7 @@ function SubSection({ sub, tabIndex, axis, theme, dark, tags, isOpen, toggleOpen
 
 // ─── Group Section ────────────────────────────────────────────
 function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
-  dispatch, matchesFilters, showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef,
+  dispatch, matchesFilters, showNotes, breadcrumbMode, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef,
   removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
 
   const [editing, setEditing] = useState(false);
@@ -1225,7 +1259,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
         <GroupFeatures
           sub={sub} group={group} axis={axis} theme={theme} dark={dark}
           tags={tags} dispatch={dispatch} matchesFilters={matchesFilters}
-          showNotes={showNotes} findFeatureByGid={findFeatureByGid}
+          showNotes={showNotes} breadcrumbMode={breadcrumbMode} findFeatureByGid={findFeatureByGid}
           dispatchMirrorEdit={dispatchMirrorEdit}
           getNextGid={getNextGid} dragRef={dragRef}
           removeTagGlobal={removeTagGlobal} setTags={setTags}
@@ -1239,7 +1273,7 @@ function GroupSection({ sub, group, axis, theme, dark, tags, isOpen, toggleOpen,
 
 // ─── Group Features (shared between single-group and multi-group) ──
 function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesFilters,
-  showNotes, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags,
+  showNotes, breadcrumbMode, findFeatureByGid, dispatchMirrorEdit, getNextGid, dragRef, removeTagGlobal, setTags,
   setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
   return (
     <div style={{ padding: "4px 0" }}>
@@ -1256,6 +1290,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
           tags={tags}
           dispatch={dispatch}
           showNotes={showNotes}
+          breadcrumbMode={breadcrumbMode}
           findFeatureByGid={findFeatureByGid}
           dispatchMirrorEdit={dispatchMirrorEdit}
           dragRef={dragRef}
@@ -1283,7 +1318,7 @@ function GroupFeatures({ sub, group, axis, theme, dark, tags, dispatch, matchesF
 
 // ─── Feature Row ──────────────────────────────────────────────
 function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, dispatch,
-  showNotes, findFeatureByGid, dispatchMirrorEdit, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
+  showNotes, breadcrumbMode, findFeatureByGid, dispatchMirrorEdit, dragRef, removeTagGlobal, setTags, setDeleteModal, setMoveFeatModal, tabIndex, isMobile }: any) {
 
   // Resolve mirror source if this is a mirror card
   const isMirror = feature.mirrorGid !== undefined;
@@ -1429,8 +1464,11 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
               </button>
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: axis.accent, fontWeight: 600, marginBottom: 1 }}>
-                {sub.name}{group.name !== "general" && <span style={{ color: axis.accent, fontWeight: 400, opacity: 0.6 }}>{" \u203A "}{group.name}</span>}
+              <div style={{ fontSize: 9, color: axis.accent, fontWeight: 400, opacity: 0.55, marginBottom: 1 }}>
+                {breadcrumbMode === "condensed"
+                  ? (group.name !== "general" ? group.name : sub.name)
+                  : <>{sub.name}{group.name !== "general" && <span style={{ opacity: 0.7 }}>{" \u203A "}{group.name}</span>}</>
+                }
               </div>
               <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: f.label }} />
             </div>
@@ -1518,8 +1556,11 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: axis.accent, fontWeight: 600, marginBottom: 1 }}>
-            {sub.name}{group.name !== "general" && <span style={{ color: axis.accent, fontWeight: 400, opacity: 0.6 }}>{" \u203A "}{group.name}</span>}
+          <div style={{ fontSize: 10, color: axis.accent, fontWeight: 400, opacity: 0.55, marginBottom: 1 }}>
+            {breadcrumbMode === "condensed"
+              ? (group.name !== "general" ? group.name : sub.name)
+              : <>{sub.name}{group.name !== "general" && <span style={{ opacity: 0.7 }}>{" \u203A "}{group.name}</span>}</>
+            }
           </div>
           <span style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: f.label }} />
         </div>
