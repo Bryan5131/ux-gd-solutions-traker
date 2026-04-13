@@ -1601,7 +1601,9 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
     <div ref={ref} style={{ display: "flex", alignItems: "center", gap: compact ? 3 : 4, flexWrap: "wrap" as const, flexShrink: 0, position: "relative" as const }}>
       {activeTags.map((t: Tag) => (
         <span key={t.id} style={{
-          background: t.color + "22", color: t.color, border: "1px solid " + t.color + "55",
+          background: compact ? "transparent" : t.color + "22",
+          color: t.color,
+          border: compact ? "none" : "1px solid " + t.color + "55",
           borderRadius: 999, padding: tagPad, fontSize: tagFs, fontWeight: 600,
           display: "inline-flex", alignItems: "center", gap: 3,
         }}>
