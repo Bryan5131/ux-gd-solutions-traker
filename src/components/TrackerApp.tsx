@@ -982,12 +982,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
                 <option key={k} value={k}>{v.icon} {v.label}</option>
               ))}
             </select>
-            <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
-              <option value="all">Tag</option>
-              {tags.map((t: Tag) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
+            <TagFilterSelect value={tagFilter} onChange={setTagFilter} tags={tags} theme={theme} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }} />
             <button
               onClick={() => setShowNotes(!showNotes)}
               style={{
@@ -1055,12 +1050,7 @@ function Toolbar({ theme, axis, dark, search, setSearch, macroFilter, setMacroFi
           <option key={k} value={k}>{v.icon} {v.label}</option>
         ))}
       </select>
-      <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={ctrl}>
-        <option value="all">Tag</option>
-        {tags.map((t: Tag) => (
-          <option key={t.id} value={t.id}>{t.label}</option>
-        ))}
-      </select>
+      <TagFilterSelect value={tagFilter} onChange={setTagFilter} tags={tags} theme={theme} style={ctrl} />
       <button
         onClick={() => setShowNotes(!showNotes)}
         style={{
@@ -1743,11 +1733,77 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
   );
 }
 
+// ─── Tag Filter Select (custom dropdown with color dots) ──────
+function TagFilterSelect({ value, onChange, tags, theme, style }: any) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const selected = (tags as Tag[]).find((t: Tag) => t.id === value);
+  const { flex, ...btnStyle } = style || {};
+
+  return (
+    <div ref={ref} style={{ position: "relative" as const, flex }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ ...btnStyle, width: "100%", display: "flex", alignItems: "center", gap: 6, justifyContent: "space-between" }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          {selected && <span style={{ width: 8, height: 8, borderRadius: "50%", background: selected.color, flexShrink: 0 }} />}
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{selected ? selected.label : "Tag"}</span>
+        </span>
+        <span style={{ fontSize: 9, opacity: 0.4, flexShrink: 0 }}>{"▾"}</span>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute" as const, top: "calc(100% + 4px)", left: 0, zIndex: 9999,
+          background: theme.surface, border: "1px solid " + theme.border,
+          borderRadius: 8, padding: 4, minWidth: "100%", boxShadow: theme.shadowMd,
+          maxHeight: 240, overflowY: "auto" as const,
+        }}>
+          <div
+            onClick={() => { onChange("all"); setOpen(false); }}
+            style={{ padding: "5px 8px", borderRadius: 4, cursor: "pointer", fontSize: 11, color: theme.textSub, fontFamily: "Lexend, sans-serif", background: value === "all" ? theme.surfaceAlt : "transparent" }}
+          >
+            Tous les tags
+          </div>
+          {(tags as Tag[]).map((t: Tag) => (
+            <div
+              key={t.id}
+              onClick={() => { onChange(t.id); setOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 8px", borderRadius: 4, cursor: "pointer", fontSize: 11,
+                background: value === t.id ? t.color + "22" : "transparent",
+                color: theme.text, fontFamily: "Lexend, sans-serif",
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.color, flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{t.label}</span>
+              {value === t.id && <span style={{ color: t.color, fontSize: 10, fontWeight: 700 }}>{"\u2713"}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tag Area ─────────────────────────────────────────────────
 function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGlobal, setTags, isMobile }: any) {
   const [open, setOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [newTagLabel, setNewTagLabel] = useState("");
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editingTagVal, setEditingTagVal] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1761,12 +1817,17 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
 
   const activeTags = tags.filter((t: Tag) => feature.tags.includes(t.id));
 
+  const saveTagEdit = (id: string, val: string) => {
+    if (val.trim()) setTags((prev: Tag[]) => prev.map((t: Tag) => t.id === id ? { ...t, label: val.trim() } : t));
+    setEditingTagId(null);
+  };
+
   return (
     <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" as const, flexShrink: 0, position: "relative" as const }}>
       {activeTags.map((t: Tag) => (
         <span key={t.id} style={{
-          background: t.color + "22", color: t.color, border: "1px solid " + t.color + "55",
-          borderRadius: 999, padding: "2px 8px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
+          background: "transparent", color: t.color, border: "none",
+          borderRadius: 999, padding: "2px 6px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
           display: "inline-flex", alignItems: "center", gap: 3,
         }}>
           {t.label}
@@ -1795,7 +1856,7 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
           right: isMobile ? 0 : "auto",
           zIndex: 9999,
           background: theme.surface, border: "1px solid " + theme.border,
-          borderRadius: 10, padding: 8, minWidth: isMobile ? 180 : 200, boxShadow: theme.shadowMd,
+          borderRadius: 10, padding: 8, minWidth: isMobile ? 180 : 210, boxShadow: theme.shadowMd,
         }}>
           <input
             value={tagSearch}
@@ -1818,21 +1879,48 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
                   <div
                     key={t.id}
                     style={{
-                      display: "flex", alignItems: "center", gap: 6, padding: "4px 6px",
-                      cursor: "pointer", borderRadius: 4, fontSize: 11,
+                      display: "flex", alignItems: "center", gap: 4, padding: "3px 4px",
+                      borderRadius: 4, fontSize: 11,
                     }}
                   >
-                    <span
-                      onClick={(e) => { e.stopPropagation(); dispatch({ type: "TT", subId: sub.id, gId: group.id, fId: feature.id, tagId: t.id }); }}
-                      style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, cursor: "pointer" }}
+                    {editingTagId === t.id ? (
+                      <input
+                        autoFocus
+                        value={editingTagVal}
+                        onChange={e => setEditingTagVal(e.target.value)}
+                        onKeyDown={e => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") saveTagEdit(t.id, editingTagVal);
+                          if (e.key === "Escape") setEditingTagId(null);
+                        }}
+                        onBlur={() => saveTagEdit(t.id, editingTagVal)}
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          flex: 1, padding: "2px 6px", borderRadius: 4,
+                          border: "1px solid " + theme.border, background: theme.surfaceAlt,
+                          fontSize: 11, fontFamily: "Lexend, sans-serif", color: theme.text, outline: "none",
+                        }}
+                      />
+                    ) : (
+                      <span
+                        onClick={(e) => { e.stopPropagation(); dispatch({ type: "TT", subId: sub.id, gId: group.id, fId: feature.id, tagId: t.id }); }}
+                        style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, cursor: "pointer", padding: "1px 2px" }}
+                      >
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.color, flexShrink: 0 }} />
+                        <span style={{ color: theme.text }}>{t.label}</span>
+                        {isSelected && <span style={{ color: t.color, fontWeight: 700 }}>{"\u2713"}</span>}
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingTagVal(t.label); setEditingTagId(t.id); }}
+                      title="Renommer"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: theme.textMuted, fontSize: 10, padding: "0 2px", opacity: 0.5, flexShrink: 0 }}
                     >
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.color, flexShrink: 0 }} />
-                      <span style={{ color: theme.text }}>{t.label}</span>
-                      {isSelected && <span style={{ color: t.color, fontWeight: 700 }}>{"\u2713"}</span>}
-                    </span>
+                      {"\u270F"}
+                    </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); removeTagGlobal(t.id); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: theme.textMuted, fontSize: 10, padding: 0 }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: theme.textMuted, fontSize: 11, padding: 0, flexShrink: 0 }}
                     >
                       {"\u00D7"}
                     </button>
@@ -2130,10 +2218,7 @@ function AllView({ allSubs, tags, theme, dark, search, setSearch,
             <option value="all">Micro</option>
             {Object.entries(microStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
           </select>
-          <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={ctrl}>
-            <option value="all">Tag</option>
-            {tags.map((t: Tag) => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
+          <TagFilterSelect value={tagFilter} onChange={setTagFilter} tags={tags} theme={theme} style={ctrl} />
           <button
             onClick={() => setShowNotes(!showNotes)}
             style={{
@@ -2347,10 +2432,7 @@ function MobileAllToolbar({ ctrl, theme, search, setSearch, macroFilter, setMacr
             <option value="all">Micro</option>
             {Object.entries(microStatuses).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
           </select>
-          <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }}>
-            <option value="all">Tag</option>
-            {tags.map((t: Tag) => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
+          <TagFilterSelect value={tagFilter} onChange={setTagFilter} tags={tags} theme={theme} style={{ ...ctrl, flex: "1 1 calc(50% - 3px)" }} />
           <button onClick={() => setShowNotes(!showNotes)} style={{
             ...ctrl, flex: "1 1 calc(50% - 3px)",
             background: showNotes ? "#e6faf4" : theme.surface,
