@@ -1413,26 +1413,32 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
             cursor: "default",
           }}
         >
-          {/* Top row: GID + label */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, flexShrink: 0, marginTop: 2 }}>#{f.gid}</span>
-            {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0, marginTop: 2 }}>{"\u21C6"}</span>}
+          {/* Top row: GID + label block + delete */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 5 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, flexShrink: 0, marginTop: 3 }}>#{f.gid}</span>
+            {isMirror && <span style={{ fontSize: 9, color: "#a855f7", fontWeight: 700, flexShrink: 0, marginTop: 3 }}>{"\u21C6"}</span>}
             {f.note && (
               <button
                 onClick={(e) => { e.stopPropagation(); setNoteVisible(!noteVisible); }}
-                style={{
-                  background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0,
-                  opacity: (noteVisible || showNotes) ? 1 : 0.3, flexShrink: 0, marginTop: 1,
-                }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: 0, opacity: (noteVisible || showNotes) ? 1 : 0.3, flexShrink: 0, marginTop: 2 }}
               >
                 {"\uD83D\uDCDD"}
               </button>
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: axis.accent, fontWeight: 600, marginBottom: 1 }}>
+              <div style={{ fontSize: 9, color: axis.accent, fontWeight: 600, marginBottom: 2 }}>
                 {sub.name}{group.name !== "general" && <span style={{ color: axis.accent, fontWeight: 400, opacity: 0.6 }}>{" \u203A "}{group.name}</span>}
               </div>
               <span style={{ fontSize: 12, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: f.label }} />
+              {/* Tags below label */}
+              <div style={{ marginTop: 5 }} onClick={e => e.stopPropagation()}>
+                <TagArea
+                  feature={tagFeature} sub={tagSub} group={tagGroup} tags={tags}
+                  theme={theme} dark={dark} dispatch={tagDispatch}
+                  removeTagGlobal={removeTagGlobal} setTags={setTags}
+                  isMobile={isMobile} compact
+                />
+              </div>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); setDeleteModal({ subId: sub.id, gId: group.id, fId: feature.id, label: f.label }); }}
@@ -1441,8 +1447,8 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
               {"\u00D7"}
             </button>
           </div>
-          {/* Bottom row: badges + tags */}
-          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4, alignItems: "center" }}>
+          {/* Bottom row: badges only */}
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <button
               onClick={(e) => { e.stopPropagation(); dispatchEdit("UF", "macro", nextMacro(f.macro)); }}
               style={badgeStyle(macroBadge)}
@@ -1457,12 +1463,6 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
               <span style={{ fontSize: 9 }}>{(microStatuses as any)[f.micro]?.icon}</span>
               {(microStatuses as any)[f.micro]?.label}
             </button>
-            <TagArea
-              feature={tagFeature} sub={tagSub} group={tagGroup} tags={tags}
-              theme={theme} dark={dark} dispatch={tagDispatch}
-              removeTagGlobal={removeTagGlobal} setTags={setTags}
-              isMobile={isMobile}
-            />
           </div>
         </div>
         {showNote && (
@@ -1493,7 +1493,7 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
         style={{
           display: "flex",
           alignItems: "center",
-          padding: "11px 16px",
+          padding: "9px 16px",
           gap: 8,
           background: rowBg,
           borderRadius: showNote ? "10px 10px 0 0" : 10,
@@ -1508,27 +1508,28 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
           {f.note && (
             <button
               onClick={() => setNoteVisible(!noteVisible)}
-              style={{
-                background: "none", border: "none", cursor: "pointer", fontSize: 12, padding: 0,
-                opacity: (noteVisible || showNotes) ? 1 : 0.3,
-              }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, padding: 0, opacity: (noteVisible || showNotes) ? 1 : 0.3 }}
             >
               {"\uD83D\uDCDD"}
             </button>
           )}
         </div>
+        {/* Label block: subtitle + label + tags */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: axis.accent, fontWeight: 600, marginBottom: 1 }}>
+          <div style={{ fontSize: 10, color: axis.accent, fontWeight: 600, marginBottom: 2 }}>
             {sub.name}{group.name !== "general" && <span style={{ color: axis.accent, fontWeight: 400, opacity: 0.6 }}>{" \u203A "}{group.name}</span>}
           </div>
-          <span style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: f.label }} />
+          <span style={{ fontSize: 13, lineHeight: 1.4 }} dangerouslySetInnerHTML={{ __html: f.label }} />
+          <div style={{ marginTop: 5 }}>
+            <TagArea
+              feature={tagFeature} sub={tagSub} group={tagGroup} tags={tags}
+              theme={theme} dark={dark} dispatch={tagDispatch}
+              removeTagGlobal={removeTagGlobal} setTags={setTags}
+              isMobile={false} compact
+            />
+          </div>
         </div>
-        <TagArea
-          feature={tagFeature} sub={tagSub} group={tagGroup} tags={tags}
-          theme={theme} dark={dark} dispatch={tagDispatch}
-          removeTagGlobal={removeTagGlobal} setTags={setTags}
-          isMobile={false}
-        />
+        {/* Right-side controls */}
         <button
           onClick={() => dispatchEdit("UF", "macro", nextMacro(f.macro))}
           style={badgeStyle(macroBadge)}
@@ -1577,7 +1578,7 @@ function FeatureRow({ feature, rowIndex, sub, group, axis, theme, dark, tags, di
 }
 
 // ─── Tag Area ─────────────────────────────────────────────────
-function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGlobal, setTags, isMobile }: any) {
+function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGlobal, setTags, isMobile, compact }: any) {
   const [open, setOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [newTagLabel, setNewTagLabel] = useState("");
@@ -1593,19 +1594,21 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
   }, [open]);
 
   const activeTags = tags.filter((t: Tag) => feature.tags.includes(t.id));
+  const tagFs = compact ? 9 : (isMobile ? 10 : 11);
+  const tagPad = compact ? "1px 6px" : "2px 8px";
 
   return (
-    <div ref={ref} style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" as const, flexShrink: 0, position: "relative" as const }}>
+    <div ref={ref} style={{ display: "flex", alignItems: "center", gap: compact ? 3 : 4, flexWrap: "wrap" as const, flexShrink: 0, position: "relative" as const }}>
       {activeTags.map((t: Tag) => (
         <span key={t.id} style={{
           background: t.color + "22", color: t.color, border: "1px solid " + t.color + "55",
-          borderRadius: 999, padding: "2px 8px", fontSize: isMobile ? 10 : 11, fontWeight: 600,
+          borderRadius: 999, padding: tagPad, fontSize: tagFs, fontWeight: 600,
           display: "inline-flex", alignItems: "center", gap: 3,
         }}>
           {t.label}
           <button
             onClick={(e) => { e.stopPropagation(); dispatch({ type: "TT", subId: sub.id, gId: group.id, fId: feature.id, tagId: t.id }); }}
-            style={{ background: "none", border: "none", cursor: "pointer", color: t.color, fontSize: 10, padding: 0 }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: t.color, fontSize: compact ? 8 : 10, padding: 0 }}
           >
             {"\u00D7"}
           </button>
@@ -1615,7 +1618,7 @@ function TagArea({ feature, sub, group, tags, theme, dark, dispatch, removeTagGl
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         style={{
           background: theme.surfaceAlt, border: "1px solid " + theme.border,
-          borderRadius: 999, padding: "2px 8px", fontSize: isMobile ? 10 : 11, cursor: "pointer",
+          borderRadius: 999, padding: tagPad, fontSize: tagFs, cursor: "pointer",
           color: theme.textSub, fontFamily: "Lexend, sans-serif",
         }}
       >
