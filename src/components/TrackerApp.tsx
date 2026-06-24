@@ -2174,7 +2174,7 @@ function AddFeatureForm({ sub, group, theme, axis, dispatch, findFeatureByGid, g
             value={label}
             onChange={e => { setLabel(e.target.value); setError(""); }}
             onKeyDown={e => { if (e.key === "Enter") handleSubmit(); if (e.key === "Escape") setOpen(false); }}
-            placeholder={isMobile ? "Nom ou #42 pour miroir" : "Nom de la solution, ou #42 pour créer un miroir"}
+            placeholder={isMobile ? "Nom ou #ID pour miroir" : "Nom de la solution, ou #ID pour créer un miroir"}
             autoFocus
             style={{
               width: "100%", padding: "7px 12px", borderRadius: 8,
